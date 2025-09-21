@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ระบบบันทึกข้อมูลอากาศยาน - Aircraft Data Management System สำหรับจัดการข้อมูลอากาศยานและส่วนประกอบต่างๆ">
+    <meta name="keywords" content="aircraft, data, management, อากาศยาน, ข้อมูล, จัดการ">
+    <meta name="author" content="Aircraft Data Management System">
+    <title>ระบบบันทึกข้อมูลอากาศยาน - Aircraft Data Management (Debug)</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ระบบบันทึกข้อมูลอากาศยาน</h1>
+            <h2>Aircraft Data Management System (Debug Mode)</h2>
+        </header>
+
+        <main>
+            <section class="summary-section" aria-label="รายการอากาศยาน">
+                <div class="aircraft-list" id="aircraftList" role="list">
+                    <!-- Aircraft data will be populated here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Modal for detailed view -->
+        <div id="detailModal" class="modal" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h2 id="modalTitle">รายละเอียดอากาศยาน</h2>
+                    <button class="close" aria-label="ปิดหน้าต่าง">&times;</button>
+                </header>
+                <div class="modal-body" id="modalBody">
+                    <!-- Detailed content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="googleSheets.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

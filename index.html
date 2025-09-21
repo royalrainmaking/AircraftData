@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ข้อมูลอากาศยาน - Aircraft Data Management System สำหรับจัดการข้อมูลอากาศยานและส่วนประกอบต่างๆ">
+    <meta name="keywords" content="aircraft, data, management, อากาศยาน, ข้อมูล, จัดการ">
+    <meta name="author" content="Aircraft Data Management System">
+    <title>ข้อมูลอากาศยาน - Aircraft Data Management</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=B612:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ข้อมูลอากาศยาน กองบริหารการบินเกษตร</h1>
+            <h2>Aircraft Data Management System</h2>
+            <nav class="top-nav">
+                <a href="index.html">หน้าหลัก</a>
+                <a href="engine.html">ข้อมูลเครื่องยนต์</a>
+                <a href="propeller.html">ข้อมูลใบพัด</a>
+            </nav>
+        </header>
+
+        <main class="main-with-sidebar">
+            <section class="summary-section" aria-label="รายการอากาศยาน">
+                <div class="search-results-count" id="searchResultsCount"></div>
+                <div class="aircraft-list" id="aircraftList" role="list">
+                    <!-- Aircraft data will be populated here -->
+                </div>
+            </section>
+            
+            <!-- Sidebar รายการ -->
+            <aside class="items-sidebar">
+                <div class="sidebar-header">
+                    <h3>รายการอากาศยาน</h3>
+                    <div class="sidebar-count" id="sidebarCount">0 รายการ</div>
+                    <div class="search-container-sidebar">
+                        <div class="search-input-wrapper">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" id="searchInput" placeholder="ค้นหาอากาศยาน..." class="search-input-sidebar">
+                        </div>
+                    </div>
+                </div>
+                <div class="sidebar-list" id="sidebarList">
+                    <!-- รายการจะถูก populate ที่นี่ -->
+                </div>
+            </aside>
+        </main>
+
+        <!-- Modal for detailed view -->
+        <div id="detailModal" class="modal" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h2 id="modalTitle">รายละเอียดอากาศยาน</h2>
+                    <button class="close" aria-label="ปิดหน้าต่าง">
+                        <span class="material-icons">close</span>
+                    </button>
+                </header>
+                <div class="modal-body" id="modalBody">
+                    <!-- Detailed content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Developer Credit -->
+    <div class="developer-credit">
+        <span class="material-symbols-outlined">contacts_product</span>
+        จัดทำโดย นายกฤษฎา ลุนาบุตร<br>
+        วิศวกรไฟฟ้าปฏิบัติการ (กลุ่มวิศวกรรม)
+    </div>
+
+    <script src="googleSheets.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

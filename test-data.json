@@ -1,0 +1,184 @@
+{
+  "data": [
+    {
+      "aircraftId": "1912",
+      "flightHours": "8520:30",
+      "components": {
+        "aircraft": {
+          "model": "CASA/NC212i",
+          "serialNumber": "1912",
+          "overhaul": 2,
+          "overhaulDue": "2024-08-15",
+          "nextOverhaul": "2025-02-15",
+          "tboRemaining": 1200,
+          "nextHSI": "2024-06-30",
+          "hsiRemaining": 450,
+          "tso": 2800,
+          "tsn": 8520,
+          "installDate": "2020-03-15",
+          "repairDue": "2024-07-20",
+          "type": "Aircraft",
+          "notes": "ข้อมูลทดสอบ"
+        },
+        "engines": [
+          {
+            "model": "TPE331-10",
+            "serialNumber": "1912-ENG-01",
+            "overhaul": 1,
+            "overhaulDue": "2024-09-10",
+            "nextOverhaul": "2025-03-10",
+            "tboRemaining": 800,
+            "nextHSI": "2024-07-15",
+            "hsiRemaining": 320,
+            "tso": 1500,
+            "tsn": 4200,
+            "installDate": "2021-06-20",
+            "repairDue": "2024-08-05",
+            "type": "Engine",
+            "notes": "เครื่องยนต์ซ้าย"
+          },
+          {
+            "model": "TPE331-10",
+            "serialNumber": "1912-ENG-02",
+            "overhaul": 1,
+            "overhaulDue": "2024-10-05",
+            "nextOverhaul": "2025-04-05",
+            "tboRemaining": 950,
+            "nextHSI": "2024-08-10",
+            "hsiRemaining": 380,
+            "tso": 1650,
+            "tsn": 4350,
+            "installDate": "2021-07-15",
+            "repairDue": "2024-09-01",
+            "type": "Engine",
+            "notes": "เครื่องยนต์ขวา"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Hartzell HC-B4TN-5",
+            "serialNumber": "1912-PROP-01",
+            "overhaul": 2,
+            "overhaulDue": "2024-07-25",
+            "nextOverhaul": "2025-01-25",
+            "tboRemaining": 600,
+            "nextHSI": "2024-06-15",
+            "hsiRemaining": 280,
+            "tso": 1200,
+            "tsn": 3800,
+            "installDate": "2022-01-10",
+            "repairDue": "2024-07-10",
+            "type": "Propeller LH",
+            "notes": "ใบพัดซ้าย"
+          },
+          {
+            "model": "Hartzell HC-B4TN-5",
+            "serialNumber": "1912-PROP-02",
+            "overhaul": 2,
+            "overhaulDue": "2024-08-20",
+            "nextOverhaul": "2025-02-20",
+            "tboRemaining": 720,
+            "nextHSI": "2024-07-05",
+            "hsiRemaining": 350,
+            "tso": 1320,
+            "tsn": 3920,
+            "installDate": "2022-02-05",
+            "repairDue": "2024-08-15",
+            "type": "Propeller RH",
+            "notes": "ใบพัดขวา"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "1915",
+      "flightHours": "9264:45",
+      "components": {
+        "aircraft": {
+          "model": "CASA/NC212i",
+          "serialNumber": "1915",
+          "overhaul": 3,
+          "overhaulDue": "2024-12-10",
+          "nextOverhaul": "2025-06-10",
+          "tboRemaining": 1800,
+          "nextHSI": "2024-09-15",
+          "hsiRemaining": 650,
+          "tso": 3200,
+          "tsn": 9264,
+          "installDate": "2019-08-20",
+          "repairDue": "2024-10-30",
+          "type": "Aircraft",
+          "notes": "ข้อมูลทดสอบ"
+        },
+        "engines": [
+          {
+            "model": "TPE331-10",
+            "serialNumber": "1915-ENG-01",
+            "overhaul": 2,
+            "overhaulDue": "2024-11-15",
+            "nextOverhaul": "2025-05-15",
+            "tboRemaining": 1200,
+            "nextHSI": "2024-08-25",
+            "hsiRemaining": 480,
+            "tso": 2100,
+            "tsn": 5800,
+            "installDate": "2020-12-10",
+            "repairDue": "2024-09-20",
+            "type": "Engine",
+            "notes": "เครื่องยนต์ซ้าย"
+          },
+          {
+            "model": "TPE331-10",
+            "serialNumber": "1915-ENG-02",
+            "overhaul": 2,
+            "overhaulDue": "2024-10-20",
+            "nextOverhaul": "2025-04-20",
+            "tboRemaining": 1050,
+            "nextHSI": "2024-08-05",
+            "hsiRemaining": 420,
+            "tso": 1950,
+            "tsn": 5650,
+            "installDate": "2020-11-25",
+            "repairDue": "2024-09-10",
+            "type": "Engine",
+            "notes": "เครื่องยนต์ขวา"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Hartzell HC-B4TN-5",
+            "serialNumber": "1915-PROP-01",
+            "overhaul": 3,
+            "overhaulDue": "2024-09-30",
+            "nextOverhaul": "2025-03-30",
+            "tboRemaining": 850,
+            "nextHSI": "2024-07-20",
+            "hsiRemaining": 380,
+            "tso": 1600,
+            "tsn": 4200,
+            "installDate": "2021-05-15",
+            "repairDue": "2024-08-25",
+            "type": "Propeller LH",
+            "notes": "ใบพัดซ้าย"
+          },
+          {
+            "model": "Hartzell HC-B4TN-5",
+            "serialNumber": "1915-PROP-02",
+            "overhaul": 3,
+            "overhaulDue": "2024-10-15",
+            "nextOverhaul": "2025-04-15",
+            "tboRemaining": 920,
+            "nextHSI": "2024-08-10",
+            "hsiRemaining": 450,
+            "tso": 1720,
+            "tsn": 4320,
+            "installDate": "2021-06-10",
+            "repairDue": "2024-09-05",
+            "type": "Propeller RH",
+            "notes": "ใบพัดขวา"
+          }
+        ]
+      }
+    }
+  ]
+}

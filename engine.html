@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ข้อมูลเครื่องยนต์ (Engine)</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=B612:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ข้อมูลเครื่องยนต์</h1>
+            <h2>Engine Information</h2>
+            <nav class="top-nav">
+                <a href="index.html">หน้าหลัก</a>
+                <a href="engine.html">ข้อมูลเครื่องยนต์</a>
+                <a href="propeller.html">ข้อมูลใบพัด</a>
+            </nav>
+        </header>
+
+        <main class="main-with-sidebar">
+            <section class="summary-section" aria-label="รายการเครื่องยนต์">
+                <div class="data-source-info" id="dataSourceInfo" style="display:none;"></div>
+                <div class="search-results-count" id="searchResultsCount"></div>
+                <div id="engineList" class="aircraft-list"></div>
+            </section>
+            
+            <!-- Sidebar รายการ -->
+            <aside class="items-sidebar">
+                <div class="sidebar-header">
+                    <h3>รายการเครื่องยนต์</h3>
+                    <div class="sidebar-count" id="sidebarCount">0 รายการ</div>
+                    <div class="search-container-sidebar">
+                        <div class="search-input-wrapper">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" id="searchInput" placeholder="ค้นหาเครื่องยนต์..." class="search-input-sidebar">
+                        </div>
+                    </div>
+                </div>
+                <div class="sidebar-list" id="sidebarList">
+                    <!-- รายการจะถูก populate ที่นี่ -->
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="googleSheets.js"></script>
+    <script>
+    (function(){
+        const TARGET_GID = '1198442843';
+        // แสดงข้อมูล text ทั้งหมดจากคอลัม A-K โดยไม่มีการคำนวณ
+        const COLUMN_LABELS = [
+            'Model', 'S/N', 'Overhaul Due', 'TSN(I)', 'TSO(I)', 'A/C(I)', 
+            'INSTALL IN', 'REMOVED', 'OH COUNT', 'Install Date', 'REMARK'
+        ];
+
+        const engineList = document.getElementById('engineList');
+        const info = document.getElementById('dataSourceInfo');
+        const searchInput = document.getElementById('searchInput');
+        const searchResultsCount = document.getElementById('searchResultsCount');
+        const sidebarList = document.getElementById('sidebarList');
+        const sidebarCount = document.getElementById('sidebarCount');
+        
+        let allRecords = []; // เก็บข้อมูลทั้งหมด
+        let filteredRecords = []; // เก็บข้อมูลที่กรองแล้ว
+
+        // Lightweight CSV parser
+        function parseCSVLine(line){
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for(let i=0;i<line.length;i++){
+                const ch = line[i];
+                if(ch === '"'){
+                    // Toggle quote or handle escaped quotes
+                    if(inQuotes && line[i+1] === '"') { current += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if(ch === ',' && !inQuotes){
+                    result.push(current.trim()); current = '';
+                } else {
+                    current += ch;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function parseCSV(text){
+            return text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0).map(parseCSVLine);
+        }
+
+        // ใช้แถวแรกเป็น header
+        function findHeaderRow(rows){
+            return rows.length > 0 ? 0 : -1;
+        }
+
+        function createItem(label, value){
+            if(!value || String(value).trim() === '' || value === '-') return '';
+            
+            // ตรวจสอบว่า label ยาวเกินไปหรือไม่
+            const isLongLabel = label && label.length > 12;
+            const labelClass = isLongLabel ? 'data-label long-label' : 'data-label';
+            
+            return `\n<div class="data-item data-item-medium">\n  <div class="${labelClass}">${label}</div>\n  <div class="data-value">${value}</div>\n</div>`;
+        }
+
+        function createRemarkItem(label, value){
+            if(!value || String(value).trim() === '' || value === '-') return '';
+            
+            return `\n<div class="data-item data-item-full remark-item">\n  <div class="data-label">${label}</div>\n  <div class="data-value remark-text">${value}</div>\n</div>`;
+        }
+
+        function createCombinedItem(items) {
+            // กรองเฉพาะ items ที่มีทั้ง label และ value
+            const validItems = items.filter(item => 
+                item.label && String(item.label).trim() !== '' && 
+                item.value && String(item.value).trim() !== '' && 
+                item.value !== '-'
+            );
+            
+            if (validItems.length === 0) return '';
+            
+            const itemsHtml = validItems.map(item => {
+                // ตรวจสอบว่า label ยาวเกินไปหรือไม่
+                const isLongLabel = item.label && item.label.length > 12;
+                const labelClass = isLongLabel ? 'data-label long-label' : 'data-label';
+                
+                return `<div class="combined-item">
+                    <div class="${labelClass}">${item.label}</div>
+                    <div class="data-value">${item.value}</div>
+                </div>`;
+            }).join('');
+            
+            const className = validItems.length <= 2 ? 'data-item-combined' : 'data-item-triple';
+            return `\n<div class="data-item ${className}">${itemsHtml}</div>`;
+        }
+
+        // ฟังก์ชันค้นหา
+        function searchRecords(query) {
+            if (!query.trim()) {
+                filteredRecords = [...allRecords];
+            } else {
+                const searchTerm = query.toLowerCase().trim();
+                filteredRecords = allRecords.filter(recordData => {
+                    const rec = recordData.record;
+                    return rec.some(cell => 
+                        cell && String(cell).toLowerCase().includes(searchTerm)
+                    );
+                });
+            }
+            renderResults();
+        }
+
+        // ฟังก์ชันเลื่อนไปยังรายการ
+        function scrollToItem(serialNumber) {
+            const itemElement = document.querySelector(`[data-engine-sn="${serialNumber}"]`);
+            if (itemElement) {
+                // Remove previous active states
+                document.querySelectorAll('.aircraft-row').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+                
+                // Add active state
+                itemElement.classList.add('active');
+                document.querySelector(`[data-sidebar-sn="${serialNumber}"]`)?.classList.add('active');
+                
+                // Scroll to element
+                itemElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            }
+        }
+
+        // สร้าง sidebar item
+        function createSidebarItem(recordData, index) {
+            const rec = recordData.record;
+            const model = rec[0] || '-';
+            const sn = rec[1] || '-';
+            const overhaulDue = rec[2] || '';
+            
+            return `
+                <div class="sidebar-item" data-sidebar-sn="${sn}">
+                    <div class="sidebar-item-title">${sn}</div>
+                    <div class="sidebar-item-subtitle">${model}${overhaulDue ? ` • ${overhaulDue}` : ''}</div>
+                </div>
+            `;
+        }
+
+        // แสดงผล sidebar
+        function renderSidebar() {
+            if (filteredRecords.length === 0) {
+                sidebarList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">ไม่พบข้อมูล</div>';
+                sidebarCount.textContent = '0 รายการ';
+                return;
+            }
+
+            const sidebarHTML = filteredRecords.map((recordData, index) => 
+                createSidebarItem(recordData, index)
+            ).join('');
+            
+            sidebarList.innerHTML = sidebarHTML;
+            sidebarCount.textContent = `${filteredRecords.length} รายการ`;
+            
+            // เพิ่ม event listeners หลังจาก render
+            addSidebarEventListeners();
+        }
+
+        // เพิ่ม event listeners ให้กับ sidebar items
+        function addSidebarEventListeners() {
+            const sidebarItems = sidebarList.querySelectorAll('.sidebar-item');
+            sidebarItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const serialNumber = this.getAttribute('data-sidebar-sn');
+                    scrollToItem(serialNumber);
+                });
+            });
+        }
+
+        // แสดงผลรายการหลัก
+        function renderMainList() {
+            if (filteredRecords.length === 0) {
+                engineList.innerHTML = '<div class="no-data">ไม่พบข้อมูลตามที่ค้นหา</div>';
+                return;
+            }
+
+            engineList.innerHTML = filteredRecords.map((recordData, index) => {
+                return renderRecord(recordData.record, index, recordData.originalIndex);
+            }).join('');
+        }
+
+        // แสดงผลทั้งหมด
+        function renderResults() {
+            renderMainList();
+            renderSidebar();
+            
+            // อัปเดต search results count
+            if (searchInput.value.trim()) {
+                searchResultsCount.textContent = `พบ ${filteredRecords.length} รายการจากทั้งหมด ${allRecords.length} รายการ`;
+            } else {
+                searchResultsCount.textContent = '';
+            }
+        }
+
+        function renderRecord(rec, index, actualRowIndex){
+            const model = rec[0] || '-'; // คอลัม A (Model)
+            const sn = rec[1] || '-';    // คอลัม B (S/N)
+            const rowNumber = actualRowIndex + 2; // แถวจริงใน Google Sheets (+2 เพราะนับจาก header)
+            
+            return `
+            <div class="aircraft-row" data-engine-sn="${sn}" style="cursor: default;">
+                <div class="aircraft-header" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2)), url('img/engine.jpg');">
+                    <div class="aircraft-info">
+                        <h4>Engine ${sn}</h4>
+                        <div class="flight-hours">Model: ${model} | S/N: ${sn}</div>
+                    </div>
+                </div>
+                <div class="aircraft-progress-bars">
+                    <div class="component-section">
+                        <div class="component-title engine">ข้อมูลเครื่องยนต์</div>
+                        <div class="data-grid">
+                            ${createCombinedItem([
+                                { label: COLUMN_LABELS[0], value: rec[0] }, // Model
+                                { label: COLUMN_LABELS[1], value: rec[1] }  // S/N
+                            ])}
+                            ${createCombinedItem([
+                                { label: COLUMN_LABELS[3], value: rec[3] }, // TSN(I)
+                                { label: COLUMN_LABELS[4], value: rec[4] }  // TSO(I)
+                            ])}
+                            ${createCombinedItem([
+                                { label: COLUMN_LABELS[5], value: rec[5] }, // A/C(I)
+                                { label: COLUMN_LABELS[2], value: rec[2] }  // Overhaul Due
+                            ])}
+                            ${createItem(COLUMN_LABELS[8], rec[8])} <!-- OH COUNT -->
+                            ${createCombinedItem([
+                                { label: COLUMN_LABELS[6], value: rec[6] }, // INSTALL IN
+                                { label: COLUMN_LABELS[9], value: rec[9] }  // Install Date
+                            ])}
+                            ${createItem(COLUMN_LABELS[7], rec[7])} <!-- REMOVED -->
+                            ${createRemarkItem(COLUMN_LABELS[10], rec[10])} <!-- REMARK full width -->
+                        </div>
+                    </div>
+                </div>
+                
+            </div>`;
+        }
+
+        function showError(msg){
+            engineList.innerHTML = `<div class="error">เกิดข้อผิดพลาด: ${msg}</div>`;
+        }
+
+        async function load(){
+            try{
+                const svc = new GoogleSheetsService();
+                const csv = await svc.getSheetDataAsCSV(TARGET_GID);
+                const rows = parseCSV(csv);
+                if(!rows || rows.length === 0){ showError('ไม่พบข้อมูล'); return; }
+                
+                const headerIndex = findHeaderRow(rows);
+                if(headerIndex === -1){ showError('ไม่พบข้อมูล'); return; }
+                
+                const header = rows[headerIndex];
+                const dataRows = rows.slice(headerIndex + 1);
+                
+                // หาแถวเริ่มต้นที่มี Model: TPE 331-10R-513C และ S/N: P-37610
+                let startIndex = -1;
+                for(let i = 0; i < dataRows.length; i++){
+                    const row = dataRows[i];
+                    const model = row[0] ? String(row[0]).trim() : '';
+                    const sn = row[1] ? String(row[1]).trim() : '';
+                    
+                    if(model.includes('TPE 331-10R-513C') && sn.includes('P-37610')){
+                        startIndex = i;
+                        break;
+                    }
+                }
+                
+                // ถ้าไม่เจอแถวเริ่มต้น ให้เริ่มจากแถวแรกที่มีข้อมูล
+                if(startIndex === -1){
+                    startIndex = 0;
+                }
+                
+                // เอาเฉพาะแถวที่มีข้อมูลจากจุดเริ่มต้น
+                const records = dataRows.slice(startIndex).filter(r => {
+                    return r.some(c => c && String(c).trim() !== '');
+                });
+
+                info.style.display = 'block';
+                info.innerHTML = `<div class="info-content"><span class="info-label">ข้อมูลจาก:</span><span class="info-value">Google Sheets (Engine) - คอลัม A-K</span><span class="info-timestamp">อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}</span><a class="refresh-btn" href="#" onclick="location.reload()"><span class="material-icons">refresh</span>รีเฟรชข้อมูล</a></div>`;
+
+                if(records.length === 0){
+                    engineList.innerHTML = '<div class="no-data">ไม่พบข้อมูลเครื่องยนต์</div>';
+                    return;
+                }
+                
+                // เก็บข้อมูลใน allRecords
+                allRecords = records.map((rec, index) => ({
+                    record: rec,
+                    originalIndex: startIndex + index + 1
+                }));
+                
+                // เริ่มต้นด้วยการแสดงข้อมูลทั้งหมด
+                filteredRecords = [...allRecords];
+                renderResults();
+            }catch(err){
+                console.error(err);
+                showError(err.message || 'ไม่สามารถโหลดข้อมูลได้');
+            }
+        }
+
+        // Event Listeners
+        searchInput.addEventListener('input', (e) => {
+            searchRecords(e.target.value);
+        });
+
+        // เคลียร์ค้นหาเมื่อกด ESC
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                searchRecords('');
+                searchInput.blur();
+            }
+        });
+
+        load();
+    })();
+    </script>
+
+    <!-- Developer Credit -->
+    <div class="developer-credit">
+        <span class="material-symbols-outlined">contacts_product</span>
+        จัดทำโดย นายกฤษฎา ลุนาบุตร<br>
+        วิศวกรไฟฟ้าปฏิบัติการ (กลุ่มวิศวกรรม)
+    </div>
+</body>
+</html>
