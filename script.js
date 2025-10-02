@@ -193,6 +193,33 @@ class AircraftDataManager {
         if (!model) return 'img/Caravan.jpg';
         const modelUpper = model.toUpperCase();
         
+        // Check for Helicopter models
+        // BELL 206B3
+        if (modelUpper.includes('BELL 206') || modelUpper.includes('BELL206')) {
+            return 'img/BELL 206B3.jpg';
+        }
+        
+        // BELL 407 and BELL 407GXP
+        if (modelUpper.includes('BELL 407') || modelUpper.includes('BELL407')) {
+            return 'img/BELL 407.jpg';
+        }
+        
+        // BELL 412 EP
+        if (modelUpper.includes('BELL 412') || modelUpper.includes('BELL412')) {
+            return 'img/BELL 412 EP.jpg';
+        }
+        
+        // AS350 B2
+        if (modelUpper.includes('AS350') || modelUpper.includes('AS 350')) {
+            return 'img/AS350 B2.jpg';
+        }
+        
+        // EC130 (H130 T2)
+        if (modelUpper.includes('EC130') || modelUpper.includes('H130') || 
+            modelUpper.includes('EC 130') || modelUpper.includes('H 130')) {
+            return 'img/EC130 (H130 T2).png';
+        }
+        
         // Check for Caravan models
         if (modelUpper.includes('CARAVAN') || modelUpper.includes('C208')) {
             return 'img/Caravan.jpg';

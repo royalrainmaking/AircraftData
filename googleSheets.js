@@ -466,8 +466,8 @@ class GoogleSheetsService {
         data.forEach((values, index) => {
             const firstCol = values[0]?.toString().trim();
             
-            // Check if this row contains an aircraft ID (4-digit number)
-            if (firstCol && firstCol.match(/^\d{4}$/)) {
+            // Check if this row contains an aircraft ID (4-5 digit number)
+            if (firstCol && firstCol.match(/^\d{4,5}$/)) {
                 currentAircraftId = firstCol;
                 console.log(`Found aircraft ID: ${currentAircraftId} at row ${index}`);
                 console.log('Row data:', values.slice(0, 5));

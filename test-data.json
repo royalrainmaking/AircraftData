@@ -179,6 +179,208 @@
           }
         ]
       }
+    },
+    {
+      "aircraftId": "1615",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "BELL 206B3",
+          "serialNumber": "1615",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "2311",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "BELL 407",
+          "serialNumber": "2311",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "2321",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "BELL 407GXP",
+          "serialNumber": "2321",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "2322",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "BELL 407GXP",
+          "serialNumber": "2322",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "21111",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "BELL 412 EP",
+          "serialNumber": "21111",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          },
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "18301",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "AS350 B2",
+          "serialNumber": "18301",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
+    },
+    {
+      "aircraftId": "2411",
+      "flightHours": "Coming soon",
+      "components": {
+        "aircraft": {
+          "model": "EC130 (H130 T2)",
+          "serialNumber": "2411",
+          "type": "Helicopter",
+          "notes": "Coming soon"
+        },
+        "engines": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Engine",
+            "notes": "Coming soon"
+          }
+        ],
+        "propellers": [
+          {
+            "model": "Coming soon",
+            "serialNumber": "Coming soon",
+            "type": "Rotor",
+            "notes": "Coming soon"
+          }
+        ]
+      }
     }
   ]
 }
