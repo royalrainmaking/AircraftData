@@ -220,6 +220,11 @@ class AircraftDataManager {
             return 'img/EC130 (H130 T2).png';
         }
         
+        // L410NG
+        if (modelUpper.includes('L410')) {
+            return 'img/L410NG.jpg';
+        }
+        
         // Check for Caravan models
         if (modelUpper.includes('CARAVAN') || modelUpper.includes('C208')) {
             return 'img/Caravan.jpg';

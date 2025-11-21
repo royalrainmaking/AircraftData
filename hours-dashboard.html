@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ชั่วโมงบินคงเหลือ - Flight Hours Dashboard">
+    <meta name="keywords" content="aircraft, flight hours, dashboard, อากาศยาน, ชั่วโมงบิน, แดชบอร์ด">
+    <meta name="author" content="Aircraft Data Management System">
+    <title>ชั่วโมงบินคงเหลือ - Flight Hours Dashboard</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=B612:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="hours-dashboard.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ข้อมูลอากาศยาน กองบริหารการบินเกษตร</h1>
+            <h2>Aircraft Data Management System</h2>
+            <nav class="top-nav">
+                <a href="index.html">หน้าหลัก</a>
+                <a href="aircraft-information.html">ข้อมูลอากาศยาน</a>
+                <a href="engine.html">ข้อมูลเครื่องยนต์</a>
+                <a href="propeller.html">ข้อมูลใบพัด</a>
+                <a href="hours-dashboard.html" class="active">ชั่วโมงบิน</a>
+            </nav>
+        </header>
+
+        <main class="dashboard-main">
+            <section class="dashboard-controls">
+                <div class="controls-group">
+                    <label for="dateSelector">เลือกวันที่:</label>
+                    <input type="date" id="dateSelector" class="date-input">
+                    <button id="resetDateBtn" class="btn btn-primary">วันนี้</button>
+                </div>
+                <div class="controls-group">
+                    <label for="searchInput">ค้นหา:</label>
+                    <input type="text" id="searchInput" placeholder="ค้นหาอากาศยาน..." class="search-input">
+                </div>
+            </section>
+
+            <section class="dashboard-summary" id="statusSummary">
+                <div class="summary-card summary-item">
+                    <div class="status-label">
+                        <span class="material-symbols-outlined status-icon">check_circle</span>
+                        <span class="status-text">ใช้ได้</span>
+                    </div>
+                    <div class="summary-value count-badge green" id="activeCount">0</div>
+                </div>
+                <div class="summary-card summary-item">
+                    <div class="status-label">
+                        <span class="material-symbols-outlined status-icon">cancel</span>
+                        <span class="status-text">ใช้ไม่ได้</span>
+                    </div>
+                    <div class="summary-value count-badge red" id="inactiveCount">0</div>
+                </div>
+                <div class="summary-card summary-item">
+                    <div class="status-label">
+                        <span class="material-symbols-outlined status-icon">schedule</span>
+                        <span class="status-text">ชั่วโมงบินวันนี้</span>
+                    </div>
+                    <div class="summary-value" id="todayHours">0.0</div>
+                </div>
+                <div class="summary-card summary-item">
+                    <div class="status-label">
+                        <span class="material-symbols-outlined status-icon">trending_up</span>
+                        <span class="status-text">บินไปแล้ว</span>
+                    </div>
+                    <div class="summary-value" id="flightDifference">0.0</div>
+                </div>
+            </section>
+
+            <section class="dashboard-table-wrapper">
+                <h3 class="section-title">รายละเอียดชั่วโมงบิน</h3>
+                <div class="table-container">
+                    <table class="dashboard-table" id="hoursTable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>ลำดับ</th>
+                                <th>เลขทะเบียน</th>
+                                <th>แบบเครื่องบิน</th>
+                                <th>ชั่วโมงบิน</th>
+                                <th>ฐานที่ตั้ง</th>
+                                <th style="text-align: center;">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- ข้อมูลจะถูกเพิ่มที่นี่ -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dashboard-chart-wrapper">
+                <h3 class="section-title">กราฟชั่วโมงบิน</h3>
+                <div class="chart-container">
+                    <canvas id="hoursChart"></canvas>
+                </div>
+            </section>
+        </main>
+
+        <!-- Developer Credit -->
+        <div class="developer-credit">
+            <span class="material-symbols-outlined">contacts_product</span>
+            จัดทำโดย นายกฤษฎา ลุนาบุตร<br>
+            วิศวกรไฟฟ้าปฏิบัติการ (กลุ่มวิศวกรรม)
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="flightStatusSheets.js"></script>
+    <script src="hours-dashboard.js"></script>
+</body>
+</html>

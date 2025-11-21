@@ -1,0 +1,522 @@
+.status-tracking-main {
+    display: flex;
+    flex: 1;
+    position: relative;
+    min-height: calc(100vh - 180px);
+    background: #f2f2f7;
+}
+
+#map {
+    flex: 1;
+    width: 100%;
+    min-height: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+#map > #statusSummary {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+}
+
+.status-sidebar {
+    width: 280px;
+    background: white;
+    border-left: 1px solid #e0e0e0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    position: relative;
+}
+
+.aircraft-detail-panel {
+    padding: 16px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    background: linear-gradient(to bottom, #f9f9f9, #ffffff);
+    position: sticky;
+    top: 0;
+    z-index: 11;
+}
+
+.detail-panel-header {
+    margin: 0;
+}
+
+.detail-panel-header h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.detail-panel-body {
+    padding: 0;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+}
+
+.detail-section {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+}
+
+.detail-section h4 {
+    margin: 8px 12px 6px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #007aff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 12px;
+}
+
+.detail-row:last-of-type {
+    padding-bottom: 8px;
+}
+
+.detail-label {
+    color: #666;
+    font-weight: 600;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.detail-value {
+    color: #1d1d1f;
+    font-weight: 600;
+    font-size: 11px;
+    word-break: break-word;
+    font-family: 'Source Code Pro', monospace;
+}
+
+.search-container-sidebar {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 8px;
+    color: #999;
+    font-size: 18px;
+    pointer-events: none;
+}
+
+.search-input-sidebar {
+    width: 100%;
+    padding: 8px 8px 8px 32px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #f5f5f5;
+    color: #000;
+    transition: all 0.2s ease;
+}
+
+.search-input-sidebar::placeholder {
+    color: #999;
+}
+
+.search-input-sidebar:focus {
+    outline: none;
+    background: white;
+    border-color: #007aff;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    color: #000;
+}
+
+.status-summary {
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 150px;
+}
+
+.status-summary p {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 6px 0;
+    padding: 4px 0;
+}
+
+.status-icon-text {
+    flex: 1;
+}
+
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 11px;
+    color: white;
+}
+
+.count-badge.green {
+    background: #34c759;
+}
+
+.count-badge.red {
+    background: #ff3b30;
+}
+
+.date-selector-wrapper {
+    padding: 8px 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.date-input {
+    flex: 1;
+    padding: 8px 8px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #f5f5f5;
+}
+
+.date-input:focus {
+    outline: none;
+    background: white;
+    border-color: #007aff;
+}
+
+.reset-date-btn {
+    padding: 8px 12px;
+    background: #007aff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reset-date-btn:hover {
+    background: #0055d4;
+}
+
+.reset-date-btn:active {
+    transform: scale(0.98);
+}
+
+.aircraft-type-filter {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    border-top: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-btn {
+    flex: 1;
+    padding: 8px 6px;
+    background: #f5f5f5;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    color: #666;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    background: #e5e5e5;
+}
+
+.filter-btn.active {
+    background: #007aff;
+    color: white;
+    border-color: #007aff;
+}
+
+.aircraft-list {
+    flex: 0 1 auto;
+    list-style: none;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    max-height: calc(100vh - 380px);
+}
+
+.aircraft-list li {
+    padding: 6px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: auto;
+}
+
+.aircraft-list li:hover {
+    background: #f9f9f9;
+}
+
+.aircraft-list li.active {
+    background: #e8f4fd;
+    border-left: 3px solid #007aff;
+    padding-left: 9px;
+}
+
+.aircraft-item-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aircraft-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.aircraft-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.aircraft-item-name {
+    font-weight: 600;
+    color: #1d1d1f;
+    font-size: 11px;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.aircraft-item-status {
+    font-size: 10px;
+    color: #999;
+    margin: 2px 0 0 0;
+    line-height: 1.2;
+    display: none;
+}
+
+.aircraft-item-base {
+    display: none;
+}
+
+.popup-status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.popup-status-badge.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.popup-status-badge.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Marker Customization */
+.custom-icon {
+    transition: transform 0.3s ease, filter 0.3s ease;
+    cursor: pointer;
+}
+
+.custom-icon:hover {
+    transform: scale(1.2);
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+    z-index: 1000 !important;
+}
+
+.marker-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    pointer-events: auto;
+    transition: transform 0.3s ease;
+}
+
+.marker-status {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.2);
+    border: 1.5px solid white;
+    background: #34c759;
+    color: white;
+    transition: width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease;
+    flex-shrink: 0;
+}
+
+.marker-status.active {
+    background: linear-gradient(135deg, #34c759 0%, #30b452 100%);
+    box-shadow: 0 0.5px 2px rgba(52, 199, 89, 0.4);
+}
+
+.marker-status.inactive {
+    background: linear-gradient(135deg, #ff3b30 0%, #e32d1e 100%);
+    box-shadow: 0 0.5px 2px rgba(255, 59, 48, 0.4);
+}
+
+.marker-icon {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    font-variation-settings: 'FILL' 1, 'wght' 600;
+    transition: font-size 0.3s ease;
+}
+
+.marker-label {
+    position: absolute;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 7px;
+    font-weight: 700;
+    color: #1d1d1f;
+    white-space: nowrap;
+    box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.1);
+    border: 0.5px solid #d0d0d0;
+    z-index: 3;
+    letter-spacing: 0.1px;
+    transition: font-size 0.3s ease, top 0.3s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .status-sidebar {
+        width: 240px;
+    }
+}
+
+@media (max-width: 768px) {
+    .status-tracking-main {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    #map {
+        min-height: 300px;
+    }
+
+    .status-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #e0e0e0;
+        max-height: calc(100vh - 480px);
+    }
+
+    .aircraft-detail-panel {
+        padding: 12px 10px;
+    }
+
+    #map > #statusSummary {
+        top: 8px;
+        right: 8px;
+    }
+
+    .aircraft-list li {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    #map {
+        min-height: 250px;
+    }
+
+    .status-sidebar {
+        max-height: calc(100vh - 430px);
+    }
+
+    .sidebar-header h3 {
+        font-size: 13px;
+    }
+
+    .search-input-sidebar {
+        font-size: 12px;
+    }
+}
+
+.custom-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    user-select: none;
+}
+
+.custom-cluster .marker-cluster {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.marker-cluster-small {
+    background: linear-gradient(135deg, #007aff 0%, #0055d4 100%);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+}
+
+.marker-cluster-medium {
+    background: linear-gradient(135deg, #ff9500 0%, #ff8000 100%);
+    box-shadow: 0 2px 8px rgba(255, 149, 0, 0.4);
+}
+
+.marker-cluster-large {
+    background: linear-gradient(135deg, #ff3b30 0%, #e32d1e 100%);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
+}
+
+.marker-cluster span {
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
