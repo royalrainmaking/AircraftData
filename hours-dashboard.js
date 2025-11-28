@@ -348,7 +348,7 @@ class HoursDashboardManager {
         }
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="no-data"><i class="fas fa-search"></i><br>ไม่พบข้อมูล</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="no-data"><i class="fas fa-search"></i><br>ไม่พบข้อมูล</td></tr>';
             return;
         }
 
@@ -360,12 +360,7 @@ class HoursDashboardManager {
                 ? '<span class="status-badge active"><span class="material-symbols-outlined">check_circle</span></span>'
                 : '<span class="status-badge inactive"><span class="material-symbols-outlined">cancel</span></span>';
             
-            const hoursDisplay = item.hours === '-' ? '-' : item.hours + ' ชม.';
-            let differenceDisplay = '';
-            if (item.hoursDifference && item.hoursDifference !== '-' && item.hoursDifference !== '0:00' && item.hoursDifference !== '-0:00' && item.hoursDifference !== '0.00' && item.hoursDifference !== '-0.00') {
-                const diffText = item.hoursDifference.startsWith('-') ? item.hoursDifference : `+${item.hoursDifference}`;
-                differenceDisplay = ` <span class="hours-difference">${diffText}</span>`;
-            }
+            const hoursDisplay = item.hours === '-' ? '-' : item.hours;
             
             const mainRow = document.createElement('tr');
             mainRow.className = 'expandable-row';
@@ -377,25 +372,17 @@ class HoursDashboardManager {
                         <span class="material-symbols-outlined">expand_more</span>
                     </span>
                 </td>
-                <td>${index + 1}</td>
                 <td><span class="aircraft-number">${item.aircraftNumber || 'N/A'}</span></td>
-                <td>
-                    <div class="aircraft-info">
-                        <img src="${item.imagePath || 'img/engine.jpg'}" alt="${item.modelName}" class="aircraft-thumb" onerror="this.src='img/engine.jpg';this.style.opacity='0.5';">
-                        <span class="aircraft-name">${item.modelName || 'N/A'}</span>
-                    </div>
-                </td>
-                <td><span class="hours-value">${hoursDisplay}${differenceDisplay}</span></td>
-                <td>${item.base || 'N/A'}</td>
+                <td><span class="hours-value">${hoursDisplay}</span></td>
                 <td class="status-cell">${statusIcon}</td>
             `;
             
             mainRow.addEventListener('click', (e) => {
-                if (e.target.closest('.expand-btn-icon, .expand-btn-icon span') || e.currentTarget === mainRow) {
+                if (e.target.closest('.expand-btn-icon') || e.target.closest('.expand-btn-icon span') || e.currentTarget === mainRow) {
                     const detailRow = document.getElementById(detailId);
                     const expandIcon = mainRow.querySelector('.expand-btn-icon');
                     if (detailRow) {
-                        detailRow.classList.toggle('hidden');
+                        detailRow.classList.toggle('expanded');
                         expandIcon.classList.toggle('expanded');
                     }
                 }
@@ -405,41 +392,45 @@ class HoursDashboardManager {
             
             const detailRow = document.createElement('tr');
             detailRow.id = detailId;
-            detailRow.className = 'detail-row hidden';
+            detailRow.className = 'detail-row';
             
             let detailHTML = '';
             
             if (item.type === 'helicopter') {
                 detailHTML = `
-                    <td colspan="7">
+                    <td colspan="4">
                         <div class="detail-content">
                             <div class="detail-grid">
                                 <div class="detail-item">
-                                    <span class="detail-label">ชั่วโมงเครื่องยนต์ ย1:</span>
+                                    <span class="detail-label">แบบเครื่องบิน:</span>
+                                    <span class="detail-value">${item.modelName || '-'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">ฐานที่ตั้ง:</span>
+                                    <span class="detail-value">${item.base || '-'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">เครื่องยนต์ ย1:</span>
                                     <span class="detail-value">${item.engineHours1 || '-'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">ชั่วโมงเครื่องยนต์ ย2:</span>
+                                    <span class="detail-label">เครื่องยนต์ ย2:</span>
                                     <span class="detail-value">${item.engineHours2 || '-'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">ชั่วโมงบินคงเหลือครบซ่อม 100:</span>
+                                    <span class="detail-label">คงเหลือ 100:</span>
                                     <span class="detail-value">${item.remainingHours100 || '-'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">ชั่วโมงบินคงเหลือครบซ่อม 150:</span>
+                                    <span class="detail-label">คงเหลือ 150:</span>
                                     <span class="detail-value">${item.remainingHours150 || '-'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">ชั่วโมงบินคงเหลือครบซ่อม 300:</span>
+                                    <span class="detail-label">คงเหลือ 300:</span>
                                     <span class="detail-value">${item.remainingHours300 || '-'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">ภารกิจ/ฐานที่ตั้ง:</span>
-                                    <span class="detail-value">${item.mission || item.base || '-'}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">ผู้ควบคุมงานช่าง:</span>
+                                    <span class="detail-label">ช่าง:</span>
                                     <span class="detail-value">${item.mechanic || '-'}</span>
                                 </div>
                                 <div class="detail-item">
@@ -452,9 +443,17 @@ class HoursDashboardManager {
                 `;
             } else {
                 detailHTML = `
-                    <td colspan="7">
+                    <td colspan="4">
                         <div class="detail-content">
                             <div class="detail-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">แบบเครื่องบิน:</span>
+                                    <span class="detail-value">${item.modelName || '-'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">ฐานที่ตั้ง:</span>
+                                    <span class="detail-value">${item.base || '-'}</span>
+                                </div>
                                 <div class="detail-item">
                                     <span class="detail-label">เครื่องยนต์:</span>
                                     <span class="detail-value">${item.engineHours || '-'}</span>
@@ -464,7 +463,7 @@ class HoursDashboardManager {
                                     <span class="detail-value">${item.checkStatus === '-' ? '-' : item.checkStatus + ' ชม.'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="detail-label">ผู้ควบคุมงานช่าง:</span>
+                                    <span class="detail-label">ช่าง:</span>
                                     <span class="detail-value">${item.mechanic || '-'}</span>
                                 </div>
                                 <div class="detail-item">

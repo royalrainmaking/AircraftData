@@ -75,20 +75,28 @@
 
 .dashboard-summary {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.dashboard-summary-extra {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
 }
 
 .summary-card {
     background: white;
-    padding: 16px;
-    border-radius: 12px;
+    padding: 14px;
+    border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-width: 0;
 }
 
 .summary-card:hover {
@@ -99,7 +107,8 @@
 .summary-item {
     flex-direction: row;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    width: 100%;
 }
 
 .status-label {
@@ -107,16 +116,21 @@
     align-items: center;
     gap: 8px;
     flex: 1;
+    min-width: 0;
 }
 
 .status-icon {
-    font-size: 24px;
+    font-size: 22px;
+    flex-shrink: 0;
 }
 
 .status-text {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .summary-label {
@@ -452,11 +466,15 @@
 @media (max-width: 768px) {
     .dashboard-main {
         padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
     }
 
     .dashboard-controls {
         flex-direction: column;
         gap: 12px;
+        border-radius: 16px;
     }
 
     .controls-group {
@@ -469,7 +487,7 @@
     }
 
     .dashboard-summary {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(160px, 1fr));
         gap: 12px;
     }
 
@@ -481,7 +499,8 @@
         font-size: 20px;
     }
 
-    .dashboard-table-wrapper {
+    .dashboard-table-wrapper,
+    .dashboard-chart-wrapper {
         padding: 16px;
         margin-bottom: 16px;
     }
@@ -500,23 +519,322 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+    .dashboard-main {
+        padding: 12px;
+        gap: 14px;
+    }
+
+    .dashboard-controls {
+        padding: 12px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
+    }
+
+    .controls-group {
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .controls-group label {
+        width: 100%;
+    }
+
+    .date-input,
+    .search-input,
+    .dashboard-controls .btn {
+        width: 100%;
+    }
+
+    .dashboard-controls .btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+    }
+
     .dashboard-summary {
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 0;
     }
 
-    .table-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    .dashboard-summary::-webkit-scrollbar {
+        display: none;
     }
 
-    .dashboard-table th,
-    .dashboard-table td {
-        padding: 6px 8px;
-        font-size: 11px;
+    .dashboard-summary-extra {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .summary-card {
+        min-width: auto;
+        flex: 1;
+        scroll-snap-align: start;
+        padding: 12px 10px;
+    }
+
+    .summary-card .status-label {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .summary-card .status-icon {
+        font-size: 20px;
+    }
+
+    .summary-card .status-text {
+        font-size: 12px;
+    }
+
+    .dashboard-table-wrapper,
+    .dashboard-chart-wrapper {
+        padding: 14px;
     }
 
     .chart-container {
-        height: 250px;
+        height: 260px;
+    }
+
+    .table-container {
+        overflow: visible;
+    }
+
+    .dashboard-table {
+        border: 0;
+    }
+
+    .dashboard-table thead {
+        display: none;
+    }
+
+    .dashboard-table tbody {
+        display: block;
+    }
+
+    .dashboard-table tr {
+        display: grid;
+        grid-template-columns: 30px 1fr 80px 50px;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        padding: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dashboard-table tr.detail-row {
+        display: none;
+        grid-column: 1 / -1;
+        padding: 16px;
+        background: #f9f9f9;
+        border: none;
+        border-radius: 0;
+        margin: -12px 0 12px 0;
+    }
+
+    .dashboard-table tr.detail-row.expanded {
+        display: grid;
+    }
+
+    .dashboard-table td {
+        display: contents;
+    }
+
+    .expand-cell {
+        width: 30px;
+        padding: 0;
+        text-align: center;
+    }
+
+    .expand-btn-icon {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #007aff;
+        transition: transform 0.2s ease;
+        font-size: 16px;
+    }
+
+    .expand-btn-icon.expanded {
+        transform: rotate(180deg);
+    }
+
+    .aircraft-number {
+        font-weight: 600;
+        color: #007aff;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hours-value {
+        font-weight: 600;
+        color: #34c759;
+        font-size: 13px;
+    }
+
+    .status-cell {
+        text-align: center;
+        padding: 0;
+    }
+
+    .dashboard-table td[data-label=""]::before {
+        content: '';
+        display: none;
+    }
+
+    .detail-row td {
+        padding: 0;
+    }
+
+    .detail-content {
+        grid-column: 1 / -1;
+        padding: 12px;
+        background: white;
+        border-left: 3px solid #007aff;
+        border-radius: 6px;
+        margin-top: 8px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .detail-item {
+        gap: 2px;
+    }
+
+    .detail-label {
+        font-size: 10px;
+    }
+
+    .detail-value {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-main {
+        padding: 8px;
+        gap: 10px;
+    }
+
+    .dashboard-controls {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .controls-group {
+        gap: 6px;
+    }
+
+    .dashboard-summary {
+        gap: 8px;
+        padding: 0;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .dashboard-summary-extra {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .summary-card {
+        min-width: auto;
+        padding: 10px 8px;
+    }
+
+    .summary-card .status-label {
+        flex-direction: row;
+        gap: 4px;
+        font-size: 11px;
+    }
+
+    .summary-card .status-icon {
+        font-size: 16px;
+    }
+
+    .summary-card .status-text {
+        font-size: 11px;
+    }
+
+    .summary-value {
+        font-size: 16px;
+    }
+
+    .dashboard-table-wrapper,
+    .dashboard-chart-wrapper {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+
+    .dashboard-table tr {
+        grid-template-columns: 24px 1fr 60px 40px;
+        padding: 10px;
+        margin-bottom: 10px;
+        gap: 6px;
+    }
+
+    .dashboard-table td {
+        padding: 0;
+        font-size: 12px;
+    }
+
+    .expand-btn-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 14px;
+    }
+
+    .aircraft-number {
+        font-size: 12px;
+    }
+
+    .hours-value {
+        font-size: 12px;
+    }
+
+    .chart-container {
+        height: 200px;
+    }
+
+    .detail-content {
+        padding: 10px;
+        margin-top: 6px;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .detail-label {
+        font-size: 9px;
+    }
+
+    .detail-value {
+        font-size: 11px;
     }
 }
