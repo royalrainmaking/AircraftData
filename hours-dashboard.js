@@ -63,6 +63,20 @@ class HoursDashboardManager {
         }
     }
 
+    showLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+    }
+
+    hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+    }
+
     setDateInputToToday() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('dateSelector').value = today;
@@ -70,6 +84,7 @@ class HoursDashboardManager {
 
     async loadData() {
         console.log('📡 กำลังโหลดข้อมูลชั่วโมงบิน...');
+        this.showLoading();
         
         try {
             if (typeof flightStatusService !== 'undefined') {
@@ -90,6 +105,8 @@ class HoursDashboardManager {
         } catch (error) {
             console.error('❌ เกิดข้อผิดพลาด:', error);
             this.loadSampleData();
+        } finally {
+            this.hideLoading();
         }
     }
 
@@ -210,7 +227,8 @@ class HoursDashboardManager {
             const engineHours2Decimal = aircraft.engineHours2 && aircraft.engineHours2 !== '-' 
                 ? this.convertHHMMToHours(aircraft.engineHours2) 
                 : '-';
-            const checkStatus = this.convertHHMMToHours(aircraft.checkStatus);
+            const checkStatusDecimal = this.convertHHMMToHours(aircraft.checkStatus);
+            const checkStatus = checkStatusDecimal !== '-' ? this.hoursToHHMM(parseFloat(checkStatusDecimal)) : '-';
             
             const engineHours1 = engineHours1Decimal !== '-' ? this.hoursToHHMM(parseFloat(engineHours1Decimal)) : '-';
             const engineHours2 = engineHours2Decimal !== '-' ? this.hoursToHHMM(parseFloat(engineHours2Decimal)) : '-';
@@ -229,6 +247,7 @@ class HoursDashboardManager {
             
             let previousHours = await this.getAircraftPreviousDayHours(aircraft.aircraftNumber);
             let hoursDifference = '-';
+            let formattedHours = flightHours;
             
             if (flightHours !== '-' && previousHours !== '-') {
                 let currentHoursDecimal;
@@ -245,8 +264,17 @@ class HoursDashboardManager {
                 
                 if (isSuperKingAir) {
                     hoursDifference = difference.toFixed(2);
+                    if (parseFloat(hoursDifference) !== 0) {
+                        const sign = difference >= 0 ? '+' : '';
+                        formattedHours = `${flightHours} ${sign}${hoursDifference}`;
+                    }
                 } else {
                     hoursDifference = this.hoursToHHMM(difference);
+                    const cleanDifference = hoursDifference.replace(/^-/, '');
+                    if (cleanDifference !== '0:00' && difference !== 0) {
+                        const sign = difference >= 0 ? '+' : '';
+                        formattedHours = `${flightHours} ${sign}${hoursDifference}`;
+                    }
                 }
             }
             
@@ -257,6 +285,7 @@ class HoursDashboardManager {
                 name: aircraft.name,
                 modelName: modelName,
                 hours: flightHours,
+                formattedHours: formattedHours,
                 hoursDifference: hoursDifference,
                 engineHours: engineDisplay,
                 engineHours1: aircraft.engineHours1 || '-',
@@ -360,10 +389,10 @@ class HoursDashboardManager {
                 ? '<span class="status-badge active"><span class="material-symbols-outlined">check_circle</span></span>'
                 : '<span class="status-badge inactive"><span class="material-symbols-outlined">cancel</span></span>';
             
-            const hoursDisplay = item.hours === '-' ? '-' : item.hours;
+            const hoursDisplay = item.formattedHours === '-' ? '-' : item.formattedHours;
             
             const mainRow = document.createElement('tr');
-            mainRow.className = 'expandable-row';
+            mainRow.className = `expandable-row ${item.isActive ? 'active' : 'inactive'}`;
             mainRow.id = rowId;
             mainRow.style.cursor = 'pointer';
             mainRow.innerHTML = `
@@ -372,8 +401,18 @@ class HoursDashboardManager {
                         <span class="material-symbols-outlined">expand_more</span>
                     </span>
                 </td>
-                <td><span class="aircraft-number">${item.aircraftNumber || 'N/A'}</span></td>
-                <td><span class="hours-value">${hoursDisplay}</span></td>
+                <td>
+                    <div class="aircraft-with-image">
+                        <img src="${item.imagePath}" alt="aircraft" class="aircraft-thumb">
+                        <span class="aircraft-number">${item.aircraftNumber || 'N/A'}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="hours-with-mission">
+                        <div><span class="hours-value">${hoursDisplay}</span></div>
+                        <div class="mission-info">${item.mission || '-'}</div>
+                    </div>
+                </td>
                 <td class="status-cell">${statusIcon}</td>
             `;
             

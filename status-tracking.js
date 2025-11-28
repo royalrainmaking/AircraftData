@@ -1,7 +1,6 @@
 class StatusTrackingManager {
     constructor() {
         this.map = null;
-        this.markerClusterGroup = null;
         this.markers = {};
         this.markerData = {};
         this.aircraftData = [];
@@ -11,6 +10,7 @@ class StatusTrackingManager {
         this.searchTerm = '';
         this.isLoading = false;
         this.selectedAircraft = null;
+        this.lines = [];
         
         this.init();
     }
@@ -36,23 +36,6 @@ class StatusTrackingManager {
             minZoom: 5
         }).addTo(this.map);
 
-        this.markerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 60,
-            iconCreateFunction: (cluster) => {
-                const count = cluster.getChildCount();
-                let className = 'marker-cluster marker-cluster-small';
-                if (count > 10) className = 'marker-cluster marker-cluster-medium';
-                if (count > 20) className = 'marker-cluster marker-cluster-large';
-                
-                return L.divIcon({
-                    html: `<div class="${className}"><span>${count}</span></div>`,
-                    className: 'custom-cluster',
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
-
-        this.map.addLayer(this.markerClusterGroup);
         this.map.on('click', () => this.deselectAircraft());
         this.map.on('zoomend', () => this.updateMarkerSizes());
     }
@@ -240,6 +223,7 @@ class StatusTrackingManager {
 
     updateMap() {
         this.clearMarkers();
+        this.clearLines();
         
         const filtered = this.getFilteredAircraft();
         
@@ -248,6 +232,8 @@ class StatusTrackingManager {
                 this.addMarker(aircraft);
             }
         });
+
+        this.spiderifyOverlappingMarkers();
 
         if (filtered.length > 0 && !this.selectedAircraft) {
             const firstAircraft = filtered[0];
@@ -295,7 +281,7 @@ class StatusTrackingManager {
             this.showDetailPanel(aircraft);
         });
 
-        this.markerClusterGroup.addLayer(marker);
+        marker.addTo(this.map);
         this.markers[aircraft.aircraftNumber] = marker;
     }
 
@@ -314,10 +300,84 @@ class StatusTrackingManager {
     }
 
     clearMarkers() {
-        if (this.markerClusterGroup) {
-            this.markerClusterGroup.clearLayers();
-        }
+        Object.values(this.markers).forEach(marker => {
+            this.map.removeLayer(marker);
+        });
         this.markers = {};
+    }
+
+    clearLines() {
+        this.lines.forEach(line => {
+            this.map.removeLayer(line);
+        });
+        this.lines = [];
+    }
+
+    spiderifyOverlappingMarkers() {
+        const locationGroups = {};
+        const threshold = 1.0;
+        
+        Object.entries(this.markers).forEach(([aircraftNumber, marker]) => {
+            const latlng = marker.getLatLng();
+            
+            let found = false;
+            for (const key in locationGroups) {
+                const [groupLat, groupLng] = key.split(',').map(Number);
+                if (Math.abs(latlng.lat - groupLat) < threshold && Math.abs(latlng.lng - groupLng) < threshold) {
+                    locationGroups[key].push({
+                        aircraftNumber,
+                        marker,
+                        lat: latlng.lat,
+                        lng: latlng.lng
+                    });
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                const key = `${latlng.lat},${latlng.lng}`;
+                locationGroups[key] = [{
+                    aircraftNumber,
+                    marker,
+                    lat: latlng.lat,
+                    lng: latlng.lng
+                }];
+            }
+        });
+
+        Object.entries(locationGroups).forEach(([key, group]) => {
+            if (group.length > 1) {
+                this.spiderifyGroup(group);
+            }
+        });
+    }
+
+    spiderifyGroup(group) {
+        const centerLat = group[0].lat;
+        const centerLng = group[0].lng;
+        const radius = 20000;
+        const count = group.length;
+        
+        group.forEach((item, index) => {
+            const angle = (index * 360 / count) * Math.PI / 180;
+            const offsetLat = centerLat + (radius / 111320) * Math.sin(angle);
+            const offsetLng = centerLng + (radius / 111320 / Math.cos(centerLat * Math.PI / 180)) * Math.cos(angle);
+            
+            item.marker.setLatLng([offsetLat, offsetLng]);
+            
+            const line = L.polyline(
+                [[centerLat, centerLng], [offsetLat, offsetLng]],
+                {
+                    color: '#999',
+                    weight: 1,
+                    opacity: 0.5,
+                    dashArray: '2, 2'
+                }
+            ).addTo(this.map);
+            
+            this.lines.push(line);
+        });
     }
 
     updateSidebar() {

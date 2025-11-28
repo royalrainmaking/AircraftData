@@ -245,6 +245,24 @@
     background: #f5f5f5;
 }
 
+.aircraft-with-image {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.aircraft-thumb {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    background: #f5f5f5;
+    padding: 2px;
+}
+
 .aircraft-number {
     font-family: 'Source Code Pro', monospace;
     font-weight: 600;
@@ -279,13 +297,24 @@
     color: #1d1d1f;
 }
 
+.hours-with-mission {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 .hours-value {
     font-family: 'Source Code Pro', monospace;
     font-weight: 600;
     color: #34c759;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.mission-info {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
 }
 
 .hours-difference {
@@ -386,6 +415,71 @@
     }
 }
 
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.loading-overlay.hidden {
+    display: none;
+}
+
+.loading-spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.loading-spinner-container .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f0f0f0;
+    border-top: 4px solid #007aff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    height: auto;
+    color: transparent;
+}
+
+.loading-spinner-container .loading-spinner i {
+    display: none;
+}
+
+.loading-text {
+    font-size: 16px;
+    color: #666;
+    font-weight: 600;
+    margin: 0;
+}
+
+.expandable-row.active {
+    background: rgba(52, 199, 89, 0.08) !important;
+    border-left: 4px solid #34c759;
+}
+
+.expandable-row.active:hover {
+    background: rgba(52, 199, 89, 0.12) !important;
+}
+
+.expandable-row.inactive {
+    background: rgba(255, 59, 48, 0.08) !important;
+    border-left: 4px solid #ff3b30;
+}
+
+.expandable-row.inactive:hover {
+    background: rgba(255, 59, 48, 0.12) !important;
+}
+
 .expand-cell {
     width: 40px;
     text-align: center;
@@ -413,8 +507,13 @@
 }
 
 .detail-row {
+    display: none;
     background: #fafafa;
     transition: all 0.3s ease;
+}
+
+.detail-row.expanded {
+    display: table-row;
 }
 
 .detail-row.hidden {
