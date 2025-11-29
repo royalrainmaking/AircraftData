@@ -342,6 +342,37 @@
     color: #721c24;
 }
 
+.detail-panel-critical-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #ff3b30;
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+    animation: pulse-critical-badge 2s ease-in-out infinite;
+    white-space: nowrap;
+}
+
+.detail-panel-critical-badge:hover {
+    animation: none;
+    background: #ff2416;
+}
+
+@keyframes pulse-critical-badge {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.3);
+    }
+}
+
 /* Marker Customization */
 .custom-icon {
     transition: transform 0.3s ease, filter 0.3s ease;
@@ -418,6 +449,37 @@
     z-index: 3;
     letter-spacing: 0.1px;
     transition: font-size 0.3s ease, top 0.3s ease;
+}
+
+.marker-notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    background: #ff9500;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(255, 149, 0, 0.5);
+    z-index: 4;
+    animation: pulse-marker-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-marker-badge {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(255, 149, 0, 0.5);
+    }
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 2px 8px rgba(255, 149, 0, 0.8);
+    }
 }
 
 /* Responsive Design */
@@ -725,4 +787,62 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.nav-notification-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    background: #ff3b30;
+    color: white;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 6px;
+    animation: pulse-nav-badge 2s ease-in-out infinite;
+    vertical-align: super;
+}
+
+@keyframes pulse-nav-badge {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 8px;
+    background: #e5e5ea;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #d0d0d0;
+    min-width: 80px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-percentage {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d1d1f;
+    min-width: 30px;
+    text-align: right;
+    font-family: 'Source Code Pro', monospace;
 }

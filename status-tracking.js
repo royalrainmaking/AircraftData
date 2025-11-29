@@ -1,3 +1,165 @@
+class ProgressBarHelper {
+    static getMaxHours(aircraft, aircraftType) {
+        const modelName = (aircraft.name || '').toUpperCase();
+        if (aircraftType === 'helicopter') {
+            if (aircraft.remainingHours100 && aircraft.remainingHours100 !== '-') {
+                return 100;
+            }
+            if (aircraft.remainingHours150 && aircraft.remainingHours150 !== '-') {
+                return 150;
+            }
+            if (aircraft.remainingHours300 && aircraft.remainingHours300 !== '-') {
+                return 300;
+            }
+            return 300;
+        }
+        if (modelName.includes('CARAVAN')) return 100;
+        if (modelName.includes('CN-235') || modelName.includes('CN235') || modelName.includes('SKA-350') || modelName.includes('SKA350')) return 200;
+        return 150;
+    }
+    
+    static convertHHMMToHours(timeStr) {
+        if (!timeStr || timeStr === '-' || typeof timeStr !== 'string') return '-';
+        const match = timeStr.match(/^(\d+):(\d+)$/);
+        if (!match) {
+            const num = parseFloat(timeStr);
+            return isNaN(num) ? '-' : num.toFixed(2);
+        }
+        const hours = parseInt(match[1]);
+        const minutes = parseInt(match[2]);
+        const totalHours = (hours + minutes / 60).toFixed(2);
+        return totalHours;
+    }
+    
+    static calculateProgressBar(aircraft, aircraftType) {
+        const maxHours = this.getMaxHours(aircraft, aircraftType);
+        let remainingHours;
+        
+        if (aircraftType === 'helicopter') {
+            let remainingHoursStr = '-';
+            if (aircraft.remainingHours100 && aircraft.remainingHours100 !== '-') {
+                remainingHoursStr = aircraft.remainingHours100;
+            } else if (aircraft.remainingHours150 && aircraft.remainingHours150 !== '-') {
+                remainingHoursStr = aircraft.remainingHours150;
+            } else if (aircraft.remainingHours300 && aircraft.remainingHours300 !== '-') {
+                remainingHoursStr = aircraft.remainingHours300;
+            }
+            
+            if (remainingHoursStr === '-') {
+                return { percentage: 0, remaining: '-', status: 'unknown' };
+            }
+            
+            const remainingDecimal = this.convertHHMMToHours(remainingHoursStr);
+            if (remainingDecimal === '-') {
+                return { percentage: 0, remaining: '-', status: 'unknown' };
+            }
+            remainingHours = parseFloat(remainingDecimal);
+        } else {
+            const aCheckDecimal = this.convertHHMMToHours(aircraft.checkStatus);
+            const flightHoursDecimal = this.convertHHMMToHours(aircraft.flightHours);
+            if (aCheckDecimal === '-' || flightHoursDecimal === '-') {
+                return { percentage: 0, remaining: '-', status: 'unknown' };
+            }
+            const aCheckVal = parseFloat(aCheckDecimal);
+            const flightHoursVal = parseFloat(flightHoursDecimal);
+            remainingHours = aCheckVal - flightHoursVal;
+        }
+        
+        const percentage = Math.max(0, Math.min(100, ((maxHours - remainingHours) / maxHours) * 100));
+        let status = 'ok';
+        if (percentage >= 80) status = 'warning';
+        if (percentage >= 95) status = 'critical';
+        return { percentage: Math.round(percentage), remaining: remainingHours.toFixed(1), maxHours: maxHours, status: status };
+    }
+    
+    static getProgressBarHTML(progressData) {
+        if (progressData.status === 'unknown') return '';
+        const color = progressData.status === 'critical' ? '#ff3b30' : progressData.status === 'warning' ? '#ff9500' : '#34c759';
+        return `<div class="progress-bar-container"><div class="progress-bar"><div class="progress-bar-fill" style="width: ${progressData.percentage}%; background-color: ${color};"></div></div><span class="progress-percentage">${progressData.percentage}%</span></div>`;
+    }
+    
+    static getProgressBarDetailHTML(progressData) {
+        if (progressData.status === 'unknown') return 'ไม่มีข้อมูล';
+        const statusText = progressData.status === 'critical' ? 'วิกฤต' : progressData.status === 'warning' ? 'เตือน' : 'ปกติ';
+        return `<div><div style="margin-bottom: 8px;">${this.getProgressBarHTML(progressData)}</div><div style="font-size: 12px; color: #666;"><div>ชั่วโมงคงเหลือ: <strong>${progressData.remaining}</strong> ชม.</div><div>ชั่วโมงสูงสุด: <strong>${progressData.maxHours}</strong> ชม.</div><div>สถานะ: <strong>${statusText}</strong></div></div></div>`;
+    }
+}
+
+class ProgressBarHelperStatus {
+    static getMaxHours(aircraft, aircraftType) {
+        const modelName = (aircraft.name || '').toUpperCase();
+        if (aircraftType === 'helicopter') {
+            if (aircraft.remainingHours100 && aircraft.remainingHours100 !== '-') {
+                return 100;
+            }
+            if (aircraft.remainingHours150 && aircraft.remainingHours150 !== '-') {
+                return 150;
+            }
+            if (aircraft.remainingHours300 && aircraft.remainingHours300 !== '-') {
+                return 300;
+            }
+            return 300;
+        }
+        if (modelName.includes('CARAVAN')) return 100;
+        if (modelName.includes('CN-235') || modelName.includes('CN235') || modelName.includes('SKA-350') || modelName.includes('SKA350')) return 200;
+        return 150;
+    }
+    
+    static convertHHMMToHours(timeStr) {
+        if (!timeStr || timeStr === '-' || typeof timeStr !== 'string') return '-';
+        const match = timeStr.match(/^(\d+):(\d+)$/);
+        if (!match) {
+            const num = parseFloat(timeStr);
+            return isNaN(num) ? '-' : num.toFixed(2);
+        }
+        const hours = parseInt(match[1]);
+        const minutes = parseInt(match[2]);
+        const totalHours = (hours + minutes / 60).toFixed(2);
+        return totalHours;
+    }
+    
+    static calculateProgressBar(aircraft, aircraftType) {
+        const maxHours = this.getMaxHours(aircraft, aircraftType);
+        let remainingHours;
+        
+        if (aircraftType === 'helicopter') {
+            let remainingHoursStr = '-';
+            if (aircraft.remainingHours100 && aircraft.remainingHours100 !== '-') {
+                remainingHoursStr = aircraft.remainingHours100;
+            } else if (aircraft.remainingHours150 && aircraft.remainingHours150 !== '-') {
+                remainingHoursStr = aircraft.remainingHours150;
+            } else if (aircraft.remainingHours300 && aircraft.remainingHours300 !== '-') {
+                remainingHoursStr = aircraft.remainingHours300;
+            }
+            
+            if (remainingHoursStr === '-') {
+                return { percentage: 0, remaining: '-', status: 'unknown' };
+            }
+            
+            const remainingDecimal = this.convertHHMMToHours(remainingHoursStr);
+            if (remainingDecimal === '-') {
+                return { percentage: 0, remaining: '-', status: 'unknown' };
+            }
+            remainingHours = parseFloat(remainingDecimal);
+        } else {
+            const aCheckDecimal = this.convertHHMMToHours(aircraft.checkStatus);
+            const flightHoursDecimal = this.convertHHMMToHours(aircraft.flightHours);
+            if (aCheckDecimal === '-' || flightHoursDecimal === '-') {
+                return { percentage: 0, remaining: '-', status: 'unknown' };
+            }
+            const aCheckVal = parseFloat(aCheckDecimal);
+            const flightHoursVal = parseFloat(flightHoursDecimal);
+            remainingHours = aCheckVal - flightHoursVal;
+        }
+        
+        const percentage = Math.max(0, Math.min(100, ((maxHours - remainingHours) / maxHours) * 100));
+        let status = 'ok';
+        if (percentage >= 80) status = 'warning';
+        if (percentage >= 95) status = 'critical';
+        return { percentage: Math.round(percentage), remaining: remainingHours.toFixed(1), maxHours: maxHours, status: status };
+    }
+}
+
 class StatusTrackingManager {
     constructor() {
         this.map = null;
@@ -255,10 +417,14 @@ class StatusTrackingManager {
         
         const iconName = aircraft.type === 'helicopter' ? 'helicopter' : 'flight';
         
+        const progressData = ProgressBarHelper.calculateProgressBar(aircraft, aircraft.type || 'aircraft');
+        const hasWarning = progressData.status === 'warning' || progressData.status === 'critical';
+        
         const markerHtml = `
             <div class="marker-container">
                 <div class="marker-status ${isActive ? 'active' : 'inactive'}">
                     <span class="material-symbols-outlined marker-icon">${iconName}</span>
+                    ${hasWarning ? '<div class="marker-notification-badge">!</div>' : ''}
                 </div>
                 <div class="marker-label">${aircraft.aircraftNumber}</div>
             </div>
@@ -438,6 +604,25 @@ class StatusTrackingManager {
                 </p>
             `;
         }
+        
+        this.updateNavNotification();
+    }
+
+    updateNavNotification() {
+        const warningCount = this.aircraftData.filter(aircraft => {
+            const progressData = ProgressBarHelperStatus.calculateProgressBar(aircraft, aircraft.type || 'aircraft');
+            return progressData.status === 'warning' || progressData.status === 'critical';
+        }).length;
+        
+        const notificationBadge = document.getElementById('hoursNavNotification');
+        if (notificationBadge) {
+            if (warningCount > 0) {
+                notificationBadge.textContent = warningCount;
+                notificationBadge.style.display = 'inline-flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
     }
 
     getFilteredAircraft() {
@@ -512,6 +697,11 @@ class StatusTrackingManager {
         const imageUrl = flightStatusService.getAircraftImageUrl(aircraft.name);
         const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${aircraft.name}" style="width: 60px; height: 60px; object-fit: contain; margin-right: 12px;">` : '';
         
+        const progressData = ProgressBarHelperStatus.calculateProgressBar(aircraft, aircraft.type || 'aircraft');
+        const criticalNotification = (progressData.status === 'critical' || progressData.status === 'warning') 
+            ? `<span class="detail-panel-critical-badge" title="สถานะ: เตือน">⚠️ เตือน</span>`
+            : '';
+        
         panel.innerHTML = `
             <div class="detail-panel-header">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -520,6 +710,7 @@ class StatusTrackingManager {
                         <div>
                             <h3 style="margin: 0;">${aircraft.aircraftNumber}</h3>
                             <p style="margin: 2px 0 0 0; font-size: 12px; color: #999;">${aircraft.name}</p>
+                            ${criticalNotification}
                         </div>
                     </div>
                     <div class="popup-status-badge ${isActive ? 'active' : 'inactive'}" style="margin-left: 8px;">
@@ -558,24 +749,30 @@ class StatusTrackingManager {
                 </div>
                 <div class="detail-section">
                     <h4>ชั่วโมงบินคงเหลือ</h4>
-                    ${aircraft.remainingHours100 && aircraft.remainingHours100 !== '-' ? `
-                    <div class="detail-row">
-                        <span class="detail-label">ครบซ่อม 100 ชั่วโมง:</span>
-                        <span class="detail-value">${aircraft.remainingHours100}</span>
-                    </div>
-                    ` : ''}
-                    ${aircraft.remainingHours150 && aircraft.remainingHours150 !== '-' ? `
-                    <div class="detail-row">
-                        <span class="detail-label">ครบซ่อม 150 ชั่วโมง:</span>
-                        <span class="detail-value">${aircraft.remainingHours150}</span>
-                    </div>
-                    ` : ''}
-                    ${aircraft.remainingHours300 && aircraft.remainingHours300 !== '-' ? `
-                    <div class="detail-row">
-                        <span class="detail-label">ครบซ่อม 300 ชั่วโมง:</span>
-                        <span class="detail-value">${aircraft.remainingHours300}</span>
-                    </div>
-                    ` : ''}
+                    ${(() => {
+                        const progressData = ProgressBarHelper.calculateProgressBar(aircraft, aircraft.type || 'aircraft');
+                        if (progressData.status !== 'unknown') {
+                            return `<div class="detail-row"><div style="width: 100%;">${ProgressBarHelper.getProgressBarDetailHTML(progressData)}</div></div>`;
+                        }
+                        return `${aircraft.remainingHours100 && aircraft.remainingHours100 !== '-' ? `
+                        <div class="detail-row">
+                            <span class="detail-label">ครบซ่อม 100 ชั่วโมง:</span>
+                            <span class="detail-value">${aircraft.remainingHours100}</span>
+                        </div>
+                        ` : ''}
+                        ${aircraft.remainingHours150 && aircraft.remainingHours150 !== '-' ? `
+                        <div class="detail-row">
+                            <span class="detail-label">ครบซ่อม 150 ชั่วโมง:</span>
+                            <span class="detail-value">${aircraft.remainingHours150}</span>
+                        </div>
+                        ` : ''}
+                        ${aircraft.remainingHours300 && aircraft.remainingHours300 !== '-' ? `
+                        <div class="detail-row">
+                            <span class="detail-label">ครบซ่อม 300 ชั่วโมง:</span>
+                            <span class="detail-value">${aircraft.remainingHours300}</span>
+                        </div>
+                        ` : ''}`;
+                    })()}
                 </div>
                 <div class="detail-section">
                     <h4>ข้อมูลฐาน</h4>

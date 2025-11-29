@@ -147,6 +147,7 @@ class AircraftDataManager {
 
         const html = data.map(aircraft => this.createAircraftCard(aircraft)).join('');
         this.aircraftList.innerHTML = html;
+        this.updateNavNotification();
     }
 
     createAircraftCard(aircraft) {
@@ -683,7 +684,10 @@ class AircraftDataManager {
                         ${this.hasValue(repairDueText) ? `<span class="title-info">ครบกำหนดซ่อม: ${repairDueText}</span>` : ''}
                     </div>
                     ${this.hasValue(additionalInfo) ? `<div class="component-details">${additionalInfo}</div>` : ''}
-                    <div class="expired-status">Expired</div>
+                    <div class="expired-status">
+                        Expired
+                        <div class="progress-notification-badge expired-badge">!</div>
+                    </div>
                 </div>
             `;
         }
@@ -691,6 +695,7 @@ class AircraftDataManager {
         // Value can be either a percentage number or a processingBar string
         const percentage = typeof value === 'number' ? value : this.parseProcessingBar(value);
         const statusClass = this.getProgressStatusClass(percentage);
+        const hasWarning = percentage >= 90;
         
         return `
             <div class="compact-progress-item ${type}">
@@ -703,7 +708,10 @@ class AircraftDataManager {
                     <div class="compact-progress-bar">
                         <div class="compact-progress-fill ${statusClass}" style="width: ${percentage}%"></div>
                     </div>
-                    <div class="compact-percentage">${percentage}%</div>
+                    <div class="compact-percentage">
+                        ${percentage}%
+                        ${hasWarning ? '<div class="progress-notification-badge">!</div>' : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -914,10 +922,57 @@ class AircraftDataManager {
             }
         };
     }
+
+    updateNavNotification() {
+        let warningCount = 0;
+        
+        this.allAircraftData.forEach(aircraft => {
+            if (aircraft.components) {
+                Object.values(aircraft.components).forEach(component => {
+                    if (component && typeof component === 'object') {
+                        if (Array.isArray(component)) {
+                            component.forEach(item => {
+                                const status = item && item.status ? String(item.status).toLowerCase().trim() : '';
+                                if (status === 'expired') {
+                                    warningCount++;
+                                } else {
+                                    const percentage = typeof item?.percentage === 'number' ? item.percentage : this.parseProcessingBar(item?.percentage);
+                                    if (percentage >= 90) {
+                                        warningCount++;
+                                    }
+                                }
+                            });
+                        } else {
+                            const status = component.status ? String(component.status).toLowerCase().trim() : '';
+                            if (status === 'expired') {
+                                warningCount++;
+                            } else {
+                                const percentage = typeof component.percentage === 'number' ? component.percentage : this.parseProcessingBar(component.percentage);
+                                if (percentage >= 90) {
+                                    warningCount++;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+        
+        const notificationBadge = document.getElementById('aircraftNavNotification');
+        if (notificationBadge) {
+            if (warningCount > 0) {
+                notificationBadge.textContent = warningCount;
+                notificationBadge.style.display = 'inline-flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
+    }
 }
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.aircraftManager = new AircraftDataManager();
     window.aircraftManager.initModal();
+    window.aircraftManager.updateNavNotification();
 });

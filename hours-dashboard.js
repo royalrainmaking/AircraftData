@@ -252,11 +252,11 @@ class HoursDashboardManager {
             if (flightHours !== '-' && previousHours !== '-') {
                 let currentHoursDecimal;
                 
-                if (isSuperKingAir) {
-                    currentHoursDecimal = parseFloat(flightHours);
-                } else {
+                if (flightHours.includes(':')) {
                     const parts = flightHours.split(':');
                     currentHoursDecimal = parseFloat(parts[0]) + parseFloat(parts[1]) / 60;
+                } else {
+                    currentHoursDecimal = parseFloat(flightHours);
                 }
                 
                 const prevHours = parseFloat(previousHours);
@@ -280,6 +280,8 @@ class HoursDashboardManager {
             
             console.log(`🖼️ Aircraft: ${modelName}, Image: ${imagePath}, Difference: ${hoursDifference}`);
             
+            const progressData = ProgressBarHelper.calculateProgressBar(aircraft, aircraft.type || 'aircraft', this.convertHHMMToHours.bind(this));
+            
             return {
                 aircraftNumber: aircraft.aircraftNumber,
                 name: aircraft.name,
@@ -301,7 +303,8 @@ class HoursDashboardManager {
                 remainingHours150: aircraft.remainingHours150 || '-',
                 remainingHours300: aircraft.remainingHours300 || '-',
                 type: aircraft.type || 'aircraft',
-                imagePath: imagePath
+                imagePath: imagePath,
+                progressData: progressData
             };
         }));
     }
@@ -321,34 +324,38 @@ class HoursDashboardManager {
         });
 
         let flightDifference = 0;
-        if (this.selectedDate) {
-            const previousDate = this.getPreviousDate(this.selectedDate);
-            console.log(`📅 Date: ${this.selectedDate}, Previous: ${previousDate}`);
-            
-            if (typeof flightStatusService !== 'undefined') {
-                try {
-                    const previousData = await flightStatusService.fetchAircraftData(previousDate);
-                    if (previousData && previousData.length > 0) {
-                        let previousTotalHours = 0;
-                        previousData.forEach(aircraft => {
-                            const hours = this.convertHHMMToHours(aircraft.flightHours);
-                            if (hours !== '-') {
-                                previousTotalHours += parseFloat(hours);
-                            }
-                        });
-                        flightDifference = totalHours - previousTotalHours;
-                        console.log(`📊 Today: ${totalHours.toFixed(2)}, Previous: ${previousTotalHours.toFixed(2)}, Difference: ${flightDifference.toFixed(2)}`);
-                    }
-                } catch (error) {
-                    console.warn('⚠️ Cannot fetch previous day data:', error);
+        this.hoursData.forEach(item => {
+            if (item.hoursDifference !== '-') {
+                const diff = parseFloat(item.hoursDifference);
+                if (!isNaN(diff)) {
+                    flightDifference += diff;
                 }
             }
-        }
+        });
+        console.log(`📊 Total flight difference (sum): ${flightDifference.toFixed(2)}`);
 
         document.getElementById('activeCount').textContent = activeCount;
         document.getElementById('inactiveCount').textContent = inactiveCount;
         document.getElementById('todayHours').textContent = totalHours.toFixed(2);
         document.getElementById('flightDifference').textContent = flightDifference.toFixed(2);
+        
+        this.updateNavNotification();
+    }
+
+    updateNavNotification() {
+        const warningCount = this.hoursData.filter(item => 
+            item.progressData.status === 'warning' || item.progressData.status === 'critical'
+        ).length;
+        
+        const notificationBadge = document.getElementById('hoursNavNotification');
+        if (notificationBadge) {
+            if (warningCount > 0) {
+                notificationBadge.textContent = warningCount;
+                notificationBadge.style.display = 'inline-flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
     }
 
     getPreviousDate(dateString) {
@@ -378,8 +385,11 @@ class HoursDashboardManager {
 
         if (filteredData.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" class="no-data"><i class="fas fa-search"></i><br>ไม่พบข้อมูล</td></tr>';
+            this.updateNavNotification();
             return;
         }
+        
+        this.updateNavNotification();
 
         filteredData.forEach((item, index) => {
             const rowId = `row-${index}`;
@@ -390,11 +400,15 @@ class HoursDashboardManager {
                 : '<span class="status-badge inactive"><span class="material-symbols-outlined">cancel</span></span>';
             
             const hoursDisplay = item.formattedHours === '-' ? '-' : item.formattedHours;
+            const progressBar = ProgressBarHelper.getProgressBarHTML(item.progressData);
             
             const mainRow = document.createElement('tr');
             mainRow.className = `expandable-row ${item.isActive ? 'active' : 'inactive'}`;
             mainRow.id = rowId;
             mainRow.style.cursor = 'pointer';
+            const criticalNotification = (item.progressData.status === 'critical' || item.progressData.status === 'warning') 
+                ? `<span class="critical-notification-icon" title="สถานะ: เตือน"></span>`
+                : '';
             mainRow.innerHTML = `
                 <td class="expand-cell">
                     <span class="expand-btn-icon">
@@ -411,10 +425,18 @@ class HoursDashboardManager {
                     <div class="hours-with-mission">
                         <div><span class="hours-value">${hoursDisplay}</span></div>
                         <div class="mission-info">${item.mission || '-'}</div>
+                        ${progressBar}
                     </div>
                 </td>
                 <td class="status-cell">${statusIcon}</td>
             `;
+            
+            if (criticalNotification) {
+                const iconSpan = document.createElement('span');
+                iconSpan.className = 'critical-notification-icon';
+                iconSpan.title = 'สถานะ: เตือน';
+                mainRow.appendChild(iconSpan);
+            }
             
             mainRow.addEventListener('click', (e) => {
                 if (e.target.closest('.expand-btn-icon') || e.target.closest('.expand-btn-icon span') || e.currentTarget === mainRow) {
@@ -469,6 +491,10 @@ class HoursDashboardManager {
                                     <span class="detail-value">${item.remainingHours300 || '-'}</span>
                                 </div>
                                 <div class="detail-item">
+                                    <span class="detail-label">Progress Bar:</span>
+                                    <span class="detail-value"><div class="progress-detail">${ProgressBarHelper.getProgressBarDetailHTML(item.progressData)}</div></span>
+                                </div>
+                                <div class="detail-item">
                                     <span class="detail-label">ช่าง:</span>
                                     <span class="detail-value">${item.mechanic || '-'}</span>
                                 </div>
@@ -500,6 +526,10 @@ class HoursDashboardManager {
                                 <div class="detail-item">
                                     <span class="detail-label">A CHECK:</span>
                                     <span class="detail-value">${item.checkStatus === '-' ? '-' : item.checkStatus + ' ชม.'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Progress Bar:</span>
+                                    <span class="detail-value"><div class="progress-detail">${ProgressBarHelper.getProgressBarDetailHTML(item.progressData)}</div></span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">ช่าง:</span>

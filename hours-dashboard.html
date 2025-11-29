@@ -28,7 +28,7 @@
                 <a href="aircraft-information.html">ข้อมูลอากาศยาน</a>
                 <a href="engine.html">ข้อมูลเครื่องยนต์</a>
                 <a href="propeller.html">ข้อมูลใบพัด</a>
-                <a href="hours-dashboard.html" class="active">ชั่วโมงบิน</a>
+                <a href="hours-dashboard.html" class="active">ชั่วโมงบิน<span id="hoursNavNotification" class="nav-notification-badge" style="display: none;"></span></a>
             </nav>
         </header>
 
@@ -72,14 +72,14 @@
                 <div class="summary-card summary-item">
                     <div class="status-label">
                         <span class="material-symbols-outlined status-icon">schedule</span>
-                        <span class="status-text">ชั่วโมงบินวันนี้</span>
+                        <span class="status-text">ชั่วโมงรวม</span>
                     </div>
                     <div class="summary-value" id="todayHours">0.0</div>
                 </div>
                 <div class="summary-card summary-item">
                     <div class="status-label">
                         <span class="material-symbols-outlined status-icon">trending_up</span>
-                        <span class="status-text">บินไปแล้ว</span>
+                        <span class="status-text">ชัวโมงบินที่เพิ่มขึ้น</span>
                     </div>
                     <div class="summary-value" id="flightDifference">0.0</div>
                 </div>
@@ -122,6 +122,79 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="flightStatusSheets.js"></script>
+    <script>
+        class ProgressBarHelper {
+            static getMaxHours(aircraft, aircraftType) {
+                const modelName = (aircraft.name || '').toUpperCase();
+                if (aircraftType === 'helicopter') {
+                    if (aircraft.remainingHours100 && aircraft.remainingHours100 !== '-') {
+                        return 100;
+                    }
+                    if (aircraft.remainingHours150 && aircraft.remainingHours150 !== '-') {
+                        return 150;
+                    }
+                    if (aircraft.remainingHours300 && aircraft.remainingHours300 !== '-') {
+                        return 300;
+                    }
+                    return 300;
+                }
+                if (modelName.includes('CARAVAN')) return 100;
+                if (modelName.includes('CN-235') || modelName.includes('CN235') || modelName.includes('SKA-350') || modelName.includes('SKA350')) return 200;
+                return 150;
+            }
+            static calculateProgressBar(aircraft, aircraftType, convertFunc) {
+                const maxHours = this.getMaxHours(aircraft, aircraftType);
+                let remainingHours;
+                
+                if (aircraftType === 'helicopter') {
+                    let remainingHoursStr = '-';
+                    if (aircraft.remainingHours100 && aircraft.remainingHours100 !== '-') {
+                        remainingHoursStr = aircraft.remainingHours100;
+                    } else if (aircraft.remainingHours150 && aircraft.remainingHours150 !== '-') {
+                        remainingHoursStr = aircraft.remainingHours150;
+                    } else if (aircraft.remainingHours300 && aircraft.remainingHours300 !== '-') {
+                        remainingHoursStr = aircraft.remainingHours300;
+                    }
+                    
+                    if (remainingHoursStr === '-') {
+                        return { percentage: 0, remaining: '-', status: 'unknown' };
+                    }
+                    
+                    const remainingDecimal = convertFunc(remainingHoursStr);
+                    if (remainingDecimal === '-') {
+                        return { percentage: 0, remaining: '-', status: 'unknown' };
+                    }
+                    remainingHours = parseFloat(remainingDecimal);
+                } else {
+                    const aCheckDecimal = convertFunc(aircraft.checkStatus);
+                    const flightHoursDecimal = convertFunc(aircraft.flightHours);
+                    if (aCheckDecimal === '-' || flightHoursDecimal === '-') {
+                        return { percentage: 0, remaining: '-', status: 'unknown' };
+                    }
+                    const aCheckVal = parseFloat(aCheckDecimal);
+                    const flightHoursVal = parseFloat(flightHoursDecimal);
+                    remainingHours = aCheckVal - flightHoursVal;
+                }
+                
+                const percentage = Math.max(0, Math.min(100, ((maxHours - remainingHours) / maxHours) * 100));
+                let status = 'ok';
+                if (percentage >= 80) status = 'warning';
+                if (percentage >= 95) status = 'critical';
+                return { percentage: Math.round(percentage), remaining: remainingHours.toFixed(1), maxHours: maxHours, status: status };
+            }
+            static getProgressBarHTML(progressData) {
+                if (progressData.status === 'unknown') return '';
+                const color = progressData.status === 'critical' ? '#ff3b30' : progressData.status === 'warning' ? '#ff9500' : '#34c759';
+                return `<div class="progress-bar-container"><div class="progress-bar"><div class="progress-bar-fill" style="width: ${progressData.percentage}%; background-color: ${color};"></div></div><span class="progress-percentage">${progressData.percentage}%</span></div>`;
+            }
+            static getProgressBarDetailHTML(progressData) {
+                if (progressData.status === 'unknown') return 'ไม่มีข้อมูล';
+                const statusText = progressData.status === 'critical' ? 'วิกฤต' : progressData.status === 'warning' ? 'เตือน' : 'ปกติ';
+                return `<div><div style="margin-bottom: 8px;">${this.getProgressBarHTML(progressData)}</div><div style="font-size: 12px; color: #666;"><div>ชั่วโมงคงเหลือ: <strong>${progressData.remaining}</strong> ชม.</div><div>ชั่วโมงสูงสุด: <strong>${progressData.maxHours}</strong> ชม.</div><div>สถานะ: <strong>${statusText}</strong></div></div></div>`;
+            }
+        }
+        window.ProgressBarHelper = ProgressBarHelper;
+    </script>
     <script src="hours-dashboard.js"></script>
 </body>
 </html>
