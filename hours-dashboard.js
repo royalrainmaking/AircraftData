@@ -5,6 +5,8 @@ class HoursDashboardManager {
         this.selectedDate = new Date().toISOString().split('T')[0];
         this.searchTerm = '';
         this.chart = null;
+        this.isFirstLoad = true;
+        this.cachedData = {}; // เก็บข้อมูลที่ดึงมาแล้ว
         this.init();
     }
 
@@ -40,7 +42,9 @@ class HoursDashboardManager {
         const dateSelector = document.getElementById('dateSelector');
         if (dateSelector) {
             dateSelector.addEventListener('change', (e) => {
+                // เฉพาะเมื่อผู้ใช้เปลี่ยนวัน ค่อยโหลดข้อมูล
                 this.selectedDate = e.target.value;
+                this.isFirstLoad = false; // ไม่ใช่การโหลดครั้งแรก
                 this.loadData();
             });
         }
@@ -50,6 +54,7 @@ class HoursDashboardManager {
             resetDateBtn.addEventListener('click', () => {
                 this.setDateInputToToday();
                 this.selectedDate = new Date().toISOString().split('T')[0];
+                this.isFirstLoad = false; // ไม่ใช่การโหลดครั้งแรก
                 this.loadData();
             });
         }
@@ -88,7 +93,18 @@ class HoursDashboardManager {
         
         try {
             if (typeof flightStatusService !== 'undefined') {
-                const data = await flightStatusService.fetchAircraftData(this.selectedDate);
+                let data;
+                if (this.isFirstLoad) {
+                    // ครั้งแรก: โหลดวันล่าสุด (ไม่ระบุ date) เพื่อให้เร็ว
+                    console.log('🚀 การโหลดครั้งแรก - ดึงข้อมูลวันล่าสุด');
+                    data = await flightStatusService.fetchAircraftData(null);
+                    this.isFirstLoad = false;
+                } else {
+                    // หลังจากนั้น: โหลดข้อมูลวันที่เลือก (จะดึงจาก cache)
+                    console.log(`📅 โหลดข้อมูลวันที่: ${this.selectedDate}`);
+                    data = await flightStatusService.fetchAircraftData(this.selectedDate);
+                }
+                
                 this.aircraftData = data || [];
                 console.log(`✅ โหลดข้อมูลสำเร็จ: ${this.aircraftData.length} เครื่องบิน`);
                 console.log('📊 Sample aircraft data:', this.aircraftData.slice(0, 3));
@@ -210,7 +226,21 @@ class HoursDashboardManager {
     }
 
     async generateHoursData() {
-        this.hoursData = await Promise.all(this.aircraftData.map(async (aircraft, index) => {
+        // ดึงข้อมูลวันก่อนหน้า 1 ครั้งเท่านั้น (แทนที่จะดึงหลายครั้ง)
+        let previousDayData = {};
+        if (!this.isFirstLoad && this.selectedDate !== new Date().toISOString().split('T')[0]) {
+            try {
+                const previousDate = this.getPreviousDate(this.selectedDate);
+                const prevData = await flightStatusService.fetchAircraftData(previousDate);
+                if (prevData && prevData.length > 0) {
+                    previousDayData = Object.fromEntries(prevData.map(a => [a.aircraftNumber, a]));
+                }
+            } catch (error) {
+                console.warn('⚠️ Cannot fetch previous day data');
+            }
+        }
+
+        this.hoursData = this.aircraftData.map((aircraft) => {
             const modelName = aircraft.name || 'N/A';
             const isSuperKingAir = modelName.toLowerCase().includes('king air') || modelName.toLowerCase().includes('kingair') || modelName.toLowerCase().includes('super') || modelName.toLowerCase().includes('ska');
             
@@ -245,7 +275,13 @@ class HoursDashboardManager {
             
             const imagePath = this.getAircraftImage(modelName);
             
-            let previousHours = await this.getAircraftPreviousDayHours(aircraft.aircraftNumber);
+            // ใช้ previousDayData ที่ดึงมาแล้ว แทนที่จะเรียก fetchAircraftData ซ้ำ
+            let previousHours = '-';
+            if (previousDayData[aircraft.aircraftNumber]) {
+                const prevAircraft = previousDayData[aircraft.aircraftNumber];
+                previousHours = this.convertHHMMToHours(prevAircraft.flightHours);
+            }
+            
             let hoursDifference = '-';
             let formattedHours = flightHours;
             
@@ -278,8 +314,6 @@ class HoursDashboardManager {
                 }
             }
             
-            console.log(`🖼️ Aircraft: ${modelName}, Image: ${imagePath}, Difference: ${hoursDifference}`);
-            
             const progressData = ProgressBarHelper.calculateProgressBar(aircraft, aircraft.type || 'aircraft', this.convertHHMMToHours.bind(this));
             
             return {
@@ -306,7 +340,7 @@ class HoursDashboardManager {
                 imagePath: imagePath,
                 progressData: progressData
             };
-        }));
+        });
     }
 
     async updateSummary() {
@@ -332,7 +366,6 @@ class HoursDashboardManager {
                 }
             }
         });
-        console.log(`📊 Total flight difference (sum): ${flightDifference.toFixed(2)}`);
 
         document.getElementById('activeCount').textContent = activeCount;
         document.getElementById('inactiveCount').textContent = inactiveCount;

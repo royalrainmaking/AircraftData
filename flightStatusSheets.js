@@ -89,34 +89,90 @@ class FlightStatusService {
         };
     }
 
+    // โหลดและ cache 2 วัน (วันที่เลือก + วันก่อนหน้า)
+    async loadAndCacheTwoDays(selectedDate) {
+        try {
+            const aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
+            
+            const fetchOptions = {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            };
+
+            const response = await fetch(aircraftURL, fetchOptions);
+            
+            if (!response.ok) {
+                return;
+            }
+
+            const text = await response.text();
+            let json;
+            const startIdx = text.indexOf('{');
+            const endIdx = text.lastIndexOf('}');
+            
+            if (startIdx !== -1 && endIdx !== -1) {
+                const jsonStr = text.substring(startIdx, endIdx + 1);
+                json = JSON.parse(jsonStr);
+            } else {
+                return;
+            }
+
+            if (!json || !json.table || !json.table.rows) {
+                return;
+            }
+
+            const rows = json.table.rows;
+            
+            // คำนวณวันก่อนหน้า
+            const dateParts = selectedDate.split('-');
+            const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            date.setDate(date.getDate() - 1);
+            const previousDate = date.toISOString().split('T')[0];
+
+            // โหลด 2 วัน
+            const datesToLoad = [selectedDate, previousDate];
+            
+            for (const dateToLoad of datesToLoad) {
+                try {
+                    const parsedData = this.parseFlightData(rows, dateToLoad);
+                    if (parsedData.length > 0) {
+                        this.cacheData(parsedData, dateToLoad);
+                    }
+                } catch (error) {
+                    console.error(`Error parsing ${dateToLoad}:`, error.message);
+                }
+            }
+
+        } catch (error) {
+            console.error('Error loading 2 days:', error.message);
+        }
+    }
+
     async fetchAircraftData(selectedDate = null) {
         try {
             const today = new Date().toISOString().split('T')[0];
             const isToday = !selectedDate || selectedDate === today;
             
-            console.log(`📅 วันที่ที่เลือก: ${selectedDate || 'ไม่ระบุ'}, วันนี้: ${today}, คือวันนี้หรือไม่: ${isToday}`);
-            
+            // ถ้าเลือกวัน → ลบ cache ทั้งหมด + โหลด 2 วัน + ใช้ cache
             if (!isToday) {
+                this.clearCache(); // ลบ cache ทั้งหมด
+                
+                // โหลดและ cache 2 วัน (วันที่เลือก + วันก่อนหน้า)
+                await this.loadAndCacheTwoDays(selectedDate);
+                
+                // ใช้ข้อมูล cache ที่เพิ่งโหลด
                 const cachedData = this.getCachedData(selectedDate);
                 if (cachedData) {
-                    console.log(`✅ ใช้ข้อมูล cache สำหรับวันที่: ${selectedDate}`);
                     this.flightData = cachedData;
                     return this.flightData;
                 }
-            } else {
-                console.log('🔄 วันนี้ - เอาข้อมูลใหม่เสมอ (ไม่ใช้ cache)');
             }
             
-            console.log('📡 กำลังดึงข้อมูลอากาศยานจาก Google Sheets...');
-            
+            // ถ้าเป็นวันนี้ → ดึง API ใหม่ทีละครั้ง
             let aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
-            
-            if (selectedDate) {
-                aircraftURL += `&date=${selectedDate}`;
-                console.log(`📅 ดึงข้อมูลสำหรับวันที่: ${selectedDate}`);
-            }
-
-            console.log('🔗 URL:', aircraftURL);
 
             const fetchOptions = {
                 cache: 'no-store',
@@ -134,11 +190,8 @@ class FlightStatusService {
 
             const text = await response.text();
             
-            console.log('📝 Response length:', text.length);
-            console.log('📝 First 200 chars:', text.substring(0, 200));
-            
             if (!text || text.length < 50) {
-                throw new Error("ข้อมูลที่ได้รับไม่ถูกต้อง");
+                throw new Error("Invalid data received");
             }
 
             let json;
@@ -147,39 +200,26 @@ class FlightStatusService {
             
             if (startIdx !== -1 && endIdx !== -1) {
                 const jsonStr = text.substring(startIdx, endIdx + 1);
-                console.log('📝 Extracted JSON length:', jsonStr.length);
                 json = JSON.parse(jsonStr);
             } else {
-                throw new Error('ไม่สามารถหา JSON ในข้อมูลที่ได้รับ');
+                throw new Error('Cannot find JSON in response');
             }
             
             if (!json || !json.table || !json.table.rows) {
-                console.error('❌ JSON structure:', json);
-                throw new Error("โครงสร้าง JSON ไม่ถูกต้อง");
+                throw new Error("Invalid JSON structure");
             }
-
-            console.log('📊 Total rows:', json.table.rows.length);
 
             this.flightData = this.parseFlightData(json.table.rows, selectedDate);
-            console.log(`✅ ดึงข้อมูลสำเร็จ: ${this.flightData.length} เครื่องบิน`);
-
-            if (!isToday) {
-                this.cacheData(this.flightData, selectedDate);
-            }
-
             return this.flightData;
 
         } catch (error) {
-            console.error('❌ เกิดข้อผิดพลาด:', error);
-            console.error('❌ Error details:', error.message);
+            console.error('Error fetching aircraft data:', error.message);
             return [];
         }
     }
 
     parseFlightData(rows, selectedDate = null) {
         const aircraft = [];
-
-        console.log('🔍 Starting to parse', rows.length, 'rows');
         
         let foundRow = null;
         let lastValidRow = null;
@@ -187,49 +227,28 @@ class FlightStatusService {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             
-            if (!row.c) {
-                console.log(`Row ${i}: no columns (c) property`);
-                continue;
-            }
-
-            console.log(`Row ${i}: ${row.c.length} columns`);
-            
-            if (row.c.length < 2) continue;
+            if (!row.c || row.c.length < 2) continue;
 
             const dateValue = row.c[0]?.v || '';
             const jsonValue = row.c[1]?.v || '';
-            
-            console.log(`📅 Date: ${dateValue}, Has JSON: ${!!jsonValue}`);
 
-            if (!jsonValue) {
-                console.log(`Row ${i}: no JSON data in column B`);
-                continue;
-            }
+            if (!jsonValue) continue;
 
             lastValidRow = row;
 
             if (selectedDate) {
                 const rowDate = this.normalizeDate(dateValue);
                 if (rowDate === selectedDate) {
-                    console.log(`✅ Date match found: ${rowDate}`);
                     foundRow = row;
                     break;
-                } else {
-                    console.log(`Skipping row - date mismatch: ${rowDate} !== ${selectedDate}`);
                 }
-            } else {
-                console.log(`No date filter, using first valid row`);
-                foundRow = row;
-                break;
             }
         }
 
         if (!foundRow) {
             if (lastValidRow) {
-                console.log('⚠️ No date match found, using last valid row');
                 foundRow = lastValidRow;
             } else {
-                console.error('❌ No valid rows found with JSON data');
                 return aircraft;
             }
         }
@@ -238,41 +257,30 @@ class FlightStatusService {
         
         try {
             const jsonData = JSON.parse(jsonValue);
-            console.log('📄 Parsed JSON successfully');
 
             const sheet1Data = jsonData.ข้อมูลSheet1 || [];
             const sheet2Data = jsonData.ข้อมูลSheet2 || [];
-            
-            console.log(`📊 Sheet1: ${sheet1Data.length} aircraft, Sheet2: ${sheet2Data.length} helicopters`);
 
             this.processSheet1Data(sheet1Data, aircraft);
             this.processSheet2Data(sheet2Data, aircraft);
 
         } catch (error) {
-            console.error(`❌ Failed to parse JSON:`, error.message);
+            console.error(`Failed to parse JSON:`, error.message);
         }
 
-        console.log('📊 Total parsed aircraft:', aircraft.length);
         return aircraft;
     }
 
     processSheet1Data(aircraftArray, resultArray) {
         if (!Array.isArray(aircraftArray)) {
-            console.log('Sheet1 is not an array:', typeof aircraftArray);
             return;
         }
-
-        console.log('Processing Sheet1 data, first item keys:', Object.keys(aircraftArray[0] || {}));
 
         aircraftArray.forEach((item, index) => {
             try {
                 if (!item || typeof item !== 'object') {
-                    console.log(`Sheet1 row ${index}: not an object`);
                     return;
                 }
-
-                console.log(`Sheet1 row ${index}:`, Object.keys(item));
-                console.log(`Sheet1 row ${index} full data:`, JSON.stringify(item, null, 2));
 
                 const aircraftNum = this.getFieldValue(item, ['เครื่องบิน', 'หมายเลข', 'number', 'aircraft_number', 'id']);
                 const baseRaw = this.getFieldValue(item, ['ภารกิจ/ฐานที่ตั้ง', 'ฐานที่ตั้ง', 'base', 'location']) || 'Bangkok';
@@ -307,33 +315,23 @@ class FlightStatusService {
 
                 if (aircraft.aircraftNumber && aircraft.name) {
                     resultArray.push(aircraft);
-                    console.log(`✈️ Added aircraft: ${aircraft.name} (${aircraft.aircraftNumber})`);
-                } else {
-                    console.log(`Sheet1 row ${index}: missing required fields`, {number: aircraft.aircraftNumber, name: aircraft.name});
                 }
             } catch (error) {
-                console.error(`Error processing aircraft ${index}:`, error, item);
+                console.error(`Error processing aircraft ${index}:`, error);
             }
         });
     }
 
     processSheet2Data(helicopterArray, resultArray) {
         if (!Array.isArray(helicopterArray)) {
-            console.log('Sheet2 is not an array:', typeof helicopterArray);
             return;
         }
-
-        console.log('Processing Sheet2 data, first item keys:', Object.keys(helicopterArray[0] || {}));
 
         helicopterArray.forEach((item, index) => {
             try {
                 if (!item || typeof item !== 'object') {
-                    console.log(`Sheet2 row ${index}: not an object`);
                     return;
                 }
-
-                console.log(`Sheet2 row ${index}:`, Object.keys(item));
-                console.log(`Sheet2 row ${index} full data:`, JSON.stringify(item, null, 2));
 
                 const helicopterNum = this.getFieldValue(item, ['เฮลิคอปเตอร์', 'หมายเลข', 'number', 'helicopter_number', 'id']);
                 const baseRaw = this.getFieldValue(item, ['ภารกิจ/ฐานที่ตั้ง', 'ฐานที่ตั้ง', 'base', 'location']) || 'Bangkok';
@@ -344,8 +342,6 @@ class FlightStatusService {
                 const coordinates = this.getCoordinatesForProvince(baseLocation);
 
                 let helicopterName = this.getFieldValue(item, ['แบบเครื่องบิน', 'แบบเฮลิคอปเตอร์', 'เฮลิคอปเตอร์', 'BELL', 'name', 'model', 'type']);
-                
-                console.log(`Sheet2 row ${index} helicopter number: ${helicopterNum}, helicopter name: ${helicopterName}`);
                 
                 if (!helicopterName || helicopterName === 'Unknown Helicopter') {
                     helicopterName = this.findHelicopterModel(item) || 'Unknown Helicopter';
@@ -375,12 +371,9 @@ class FlightStatusService {
 
                 if (helicopter.aircraftNumber && helicopter.name) {
                     resultArray.push(helicopter);
-                    console.log(`🚁 Added helicopter: ${helicopter.name} (${helicopter.aircraftNumber})`);
-                } else {
-                    console.log(`Sheet2 row ${index}: missing required fields`, {number: helicopter.aircraftNumber, name: helicopter.name});
                 }
             } catch (error) {
-                console.error(`Error processing helicopter ${index}:`, error, item);
+                console.error(`Error processing helicopter ${index}:`, error);
             }
         });
     }
@@ -598,9 +591,8 @@ class FlightStatusService {
             };
             
             localStorage.setItem(this.cacheKey, JSON.stringify(cacheObj));
-            console.log(`💾 บันทึกข้อมูลลงใน cache สำหรับวันที่: ${date || 'latest'}`);
         } catch (error) {
-            console.error('❌ ไม่สามารถบันทึก cache:', error);
+            console.error('Error caching data:', error.message);
         }
     }
 
@@ -610,25 +602,12 @@ class FlightStatusService {
             const cacheEntry = cacheObj[date || 'latest'];
             
             if (!cacheEntry) {
-                console.log(`📋 ไม่พบ cache สำหรับวันที่: ${date || 'latest'}`);
                 return null;
             }
 
-            const currentTime = new Date().getTime();
-            const age = currentTime - cacheEntry.timestamp;
-            const CACHE_DURATION = 24 * 60 * 60 * 1000;
-
-            if (age < CACHE_DURATION) {
-                console.log(`📋 ใช้ข้อมูล cache สำหรับวันที่: ${date || 'latest'} (อายุ: ${Math.round(age / 1000)}วินาที)`);
-                return cacheEntry.data;
-            } else {
-                console.log(`⏰ ข้อมูล cache หมดอายุแล้ว สำหรับวันที่: ${date || 'latest'}`);
-                delete cacheObj[date || 'latest'];
-                localStorage.setItem(this.cacheKey, JSON.stringify(cacheObj));
-                return null;
-            }
+            return cacheEntry.data;
         } catch (error) {
-            console.error('❌ เกิดข้อผิดพลาดในการอ่าน cache:', error);
+            console.error('Error reading cache:', error.message);
             return null;
         }
     }
@@ -639,13 +618,11 @@ class FlightStatusService {
                 const cacheObj = JSON.parse(localStorage.getItem(this.cacheKey) || '{}');
                 delete cacheObj[date];
                 localStorage.setItem(this.cacheKey, JSON.stringify(cacheObj));
-                console.log(`🗑️ ล้าง cache สำหรับวันที่: ${date}`);
             } else {
                 localStorage.removeItem(this.cacheKey);
-                console.log('🗑️ ล้าง cache ทั้งหมด');
             }
         } catch (error) {
-            console.error('❌ เกิดข้อผิดพลาดในการล้าง cache:', error);
+            console.error('Error clearing cache:', error.message);
         }
     }
 
