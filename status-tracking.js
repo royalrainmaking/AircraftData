@@ -190,17 +190,25 @@ class StatusTrackingManager {
     }
 
     initializeMap() {
-        this.map = L.map('map').setView([13.7367, 100.5231], 7);
-        
+        const thailandBounds = [
+            [5.61, 97.34],   // ใต้สุด
+            [20.47, 105.64]  // เหนือสุด
+        ];
+    
+        this.map = L.map('map');
+    
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19,
             minZoom: 5
         }).addTo(this.map);
-
+    
+        this.map.fitBounds(thailandBounds);
+    
         this.map.on('click', () => this.deselectAircraft());
         this.map.on('zoomend', () => this.updateMarkerSizes());
     }
+    
     
     getMarkerSizeByZoom(zoom) {
         if (zoom <= 6) return { circle: 18, icon: 9, label: 6, offsetX: 5, offsetY: 5 };
@@ -396,13 +404,6 @@ class StatusTrackingManager {
         });
 
         this.spiderifyOverlappingMarkers();
-
-        if (filtered.length > 0 && !this.selectedAircraft) {
-            const firstAircraft = filtered[0];
-            const lat = firstAircraft.latitude || 13.7367;
-            const lng = firstAircraft.longitude || 100.5231;
-            this.map.setView([lat, lng], 10);
-        }
     }
 
     addMarker(aircraft) {

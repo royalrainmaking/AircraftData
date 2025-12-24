@@ -1032,6 +1032,420 @@
     }
 }
 
+.daily-history-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.1), 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 122, 255, 0.1);
+    display: none;
+}
+
+.daily-history-section.visible {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.history-controls {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, #f9fbff 0%, #f5f9ff 100%);
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 122, 255, 0.15);
+    align-items: flex-end;
+}
+
+.aircraft-selector-wrapper {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+    padding: 12px 14px;
+    border-radius: 9px;
+    border: 1px solid rgba(0, 122, 255, 0.12);
+    margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0, 122, 255, 0.05);
+}
+
+.aircraft-selector-label {
+    font-weight: 600;
+    color: #007aff;
+    font-size: 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.aircraft-selector-label::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 16px;
+    background: #007aff;
+    border-radius: 1px;
+}
+
+.aircraft-selector-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.aircraft-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.aircraft-radio-item input[type="radio"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: #007aff;
+}
+
+.aircraft-radio-item label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #1d1d1f;
+    font-weight: 500;
+    margin: 0;
+    flex: 1;
+    transition: color 0.2s ease;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.aircraft-radio-item input[type="radio"]:checked + label {
+    color: #007aff;
+    font-weight: 600;
+}
+
+.history-controls .controls-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 1 auto;
+    min-width: auto;
+}
+
+.history-controls label {
+    font-weight: 600;
+    color: #1d1d1f;
+    font-size: 14px;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.history-controls .date-input {
+    padding: 8px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'B612', 'Roboto Condensed', sans-serif;
+    transition: all 0.2s ease;
+    min-width: 150px;
+}
+
+.history-controls .date-input:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.history-controls .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.history-controls .btn-secondary {
+    background: #f5f5f5;
+    color: #1d1d1f;
+    border: 1px solid #d0d0d0;
+}
+
+.history-controls .btn-secondary:hover {
+    background: #e8e8e8;
+    border-color: #c0c0c0;
+}
+
+.history-controls .btn-secondary:active {
+    transform: scale(0.98);
+}
+
+.daily-history-table-wrapper {
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #e5e5ea;
+}
+
+.daily-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.daily-history-table thead {
+    background: #f5f5f5;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.daily-history-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #1d1d1f;
+    white-space: nowrap;
+    border-right: 1px solid #e0e0e0;
+}
+
+.daily-history-table th:last-child {
+    border-right: none;
+}
+
+.daily-history-table th.date-col {
+    position: sticky;
+    left: 0;
+    background: #f5f5f5;
+    z-index: 10;
+    min-width: 90px;
+}
+
+.daily-history-table td.date-col {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 9;
+    text-align: left;
+    font-weight: 600;
+    color: #007aff;
+    border-right: 2px solid #e0e0e0;
+}
+
+.daily-history-table tbody tr:nth-child(odd) td.date-col {
+    background: #fafafa;
+}
+
+.daily-history-table tbody tr:hover td.date-col {
+    background: #f9f9f9;
+}
+
+.daily-history-table tbody tr:nth-child(odd):hover td.date-col {
+    background: #f5f5f5;
+}
+
+.daily-history-table th.aircraft-col {
+    position: sticky;
+    left: 0;
+    background: #f5f5f5;
+    z-index: 10;
+}
+
+.daily-history-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
+    color: #333;
+    white-space: nowrap;
+    text-align: center;
+    font-family: 'Source Code Pro', monospace;
+}
+
+.daily-history-table td:last-child {
+    border-right: none;
+}
+
+.daily-history-table th:nth-child(5),
+.daily-history-table td:nth-child(5) {
+    display: none;
+}
+
+.daily-history-table tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.daily-history-table tbody tr:nth-child(odd) {
+    background: #fafafa;
+}
+
+.daily-history-table tbody tr:nth-child(odd):hover {
+    background: #f5f5f5;
+}
+
+.daily-history-table td.aircraft-col {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 9;
+    text-align: left;
+    font-weight: 600;
+    color: #007aff;
+    border-right: 2px solid #e0e0e0;
+}
+
+.daily-history-table tbody tr:nth-child(odd) td.aircraft-col {
+    background: #fafafa;
+}
+
+.daily-history-table tbody tr:hover td.aircraft-col {
+    background: #f9f9f9;
+}
+
+.daily-history-table tbody tr:nth-child(odd):hover td.aircraft-col {
+    background: #f5f5f5;
+}
+
+#dailyHistoryTableContainer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.history-empty-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.history-empty-message i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+.history-error-message {
+    background: #fff5f5;
+    border: 1px solid #fdbdd8;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #d70015;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.history-success-message {
+    background: #f0fdf4;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #15803d;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .daily-history-section {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .history-controls {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        align-items: stretch;
+    }
+
+    .history-controls .controls-group {
+        flex-direction: column;
+        min-width: auto;
+        width: 100%;
+    }
+
+    .history-controls label {
+        align-self: flex-start;
+    }
+
+    .history-controls .date-input,
+    .history-controls .btn {
+        width: 100%;
+        min-width: auto;
+    }
+
+    .aircraft-selector-wrapper {
+        padding: 8px 10px;
+        margin-bottom: 10px;
+    }
+
+    .aircraft-selector-list {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 6px;
+    }
+
+    .daily-history-table {
+        font-size: 12px;
+    }
+
+    .daily-history-table th,
+    .daily-history-table td {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 640px) {
+    .daily-history-section {
+        padding: 12px;
+    }
+
+    .history-controls {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .aircraft-selector-wrapper {
+        padding: 8px 10px;
+        margin-bottom: 10px;
+    }
+
+    .aircraft-selector-list {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 6px;
+    }
+
+    .aircraft-radio-item label {
+        font-size: 12px;
+    }
+
+    .daily-history-table th,
+    .daily-history-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .daily-history-table th.date-col {
+        min-width: 85px;
+    }
+
+    .daily-history-table th.aircraft-col {
+        min-width: 100px;
+    }
+}
+
 .progress-bar-container {
     display: flex;
     align-items: center;

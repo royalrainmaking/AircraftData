@@ -226,18 +226,15 @@ class HoursDashboardManager {
     }
 
     async generateHoursData() {
-        // ดึงข้อมูลวันก่อนหน้า 1 ครั้งเท่านั้น (แทนที่จะดึงหลายครั้ง)
         let previousDayData = {};
-        if (!this.isFirstLoad && this.selectedDate !== new Date().toISOString().split('T')[0]) {
-            try {
-                const previousDate = this.getPreviousDate(this.selectedDate);
-                const prevData = await flightStatusService.fetchAircraftData(previousDate);
-                if (prevData && prevData.length > 0) {
-                    previousDayData = Object.fromEntries(prevData.map(a => [a.aircraftNumber, a]));
-                }
-            } catch (error) {
-                console.warn('⚠️ Cannot fetch previous day data');
+        try {
+            const previousDate = this.getPreviousDate(this.selectedDate);
+            const prevData = await flightStatusService.fetchAircraftData(previousDate);
+            if (prevData && prevData.length > 0) {
+                previousDayData = Object.fromEntries(prevData.map(a => [a.aircraftNumber, a]));
             }
+        } catch (error) {
+            console.warn('⚠️ Cannot fetch previous day data');
         }
 
         this.hoursData = this.aircraftData.map((aircraft) => {
@@ -656,6 +653,545 @@ class HoursDashboardManager {
     }
 }
 
+class DailyHistoryManager {
+    constructor() {
+        this.dailyHistoryData = [];
+        this.cache = {};
+        this.dateRange = null;
+        this.cacheKeyPrefix = 'dailyHistory_';
+        this.isLoading = false;
+        this.selectedAircraft = null;
+        this.init();
+    }
+
+    init() {
+        const section = document.getElementById('dailyHistorySection');
+        const fromDateInput = document.getElementById('historyFromDate');
+        const toDateInput = document.getElementById('historyToDate');
+        const loadBtn = document.getElementById('loadHistoryBtn');
+        const exportBtn = document.getElementById('exportHistoryBtn');
+
+        if (!section || !fromDateInput || !toDateInput || !loadBtn) {
+            console.warn('⚠️ Daily history elements not found');
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        fromDateInput.value = sevenDaysAgo;
+        toDateInput.value = today;
+
+        loadBtn.addEventListener('click', () => this.handleLoadClick());
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToExcel());
+        }
+
+        this.setVisible(true);
+        this.loadAllAircraft();
+    }
+
+    setVisible(visible) {
+        const section = document.getElementById('dailyHistorySection');
+        if (section) {
+            if (visible) {
+                section.classList.add('visible');
+            } else {
+                section.classList.remove('visible');
+            }
+        }
+    }
+
+    async loadAllAircraft() {
+        try {
+            if (typeof flightStatusService === 'undefined') {
+                console.warn('⚠️ flightStatusService not available');
+                return;
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            const data = await flightStatusService.fetchAircraftData(today);
+            
+            if (data && Array.isArray(data) && data.length > 0) {
+                const aircraftList = [];
+                const aircraftMap = new Map();
+                
+                for (const aircraft of data) {
+                    if (!aircraftMap.has(aircraft.aircraftNumber)) {
+                        aircraftMap.set(aircraft.aircraftNumber, {
+                            aircraftNumber: aircraft.aircraftNumber,
+                            name: aircraft.name || 'N/A'
+                        });
+                    }
+                }
+                
+                for (const [, aircraft] of aircraftMap) {
+                    aircraftList.push(aircraft);
+                }
+                
+                aircraftList.sort((a, b) => a.aircraftNumber.localeCompare(b.aircraftNumber));
+                this.populateAircraftSelector(aircraftList);
+                console.log('✅ Loaded aircraft list:', aircraftList.length);
+            }
+        } catch (error) {
+            console.warn('⚠️ Error loading aircraft:', error.message);
+        }
+    }
+
+    populateAircraftSelector(aircraftList) {
+        const wrapper = document.getElementById('aircraftSelectorWrapper');
+        const list = document.getElementById('aircraftSelectorList');
+
+        if (!wrapper || !list) {
+            console.error('❌ Aircraft selector elements not found');
+            return;
+        }
+
+        list.innerHTML = '';
+        
+        if (aircraftList.length === 0) {
+            list.innerHTML = '<div style="padding: 12px; color: #999; font-size: 13px;">ยังไม่มีข้อมูลเครื่องบิน</div>';
+            return;
+        }
+
+        for (const aircraft of aircraftList) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'aircraft-radio-item';
+
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'aircraft-selector';
+            radio.value = aircraft.aircraftNumber;
+            radio.id = `aircraft-${aircraft.aircraftNumber}`;
+            radio.addEventListener('change', (e) => this.handleAircraftSelection(e));
+
+            const label = document.createElement('label');
+            label.htmlFor = `aircraft-${aircraft.aircraftNumber}`;
+            label.textContent = `${aircraft.aircraftNumber} - ${aircraft.name}`;
+
+            itemDiv.appendChild(radio);
+            itemDiv.appendChild(label);
+            list.appendChild(itemDiv);
+        }
+
+        if (aircraftList.length > 0) {
+            const firstRadio = document.getElementById(`aircraft-${aircraftList[0].aircraftNumber}`);
+            if (firstRadio) {
+                firstRadio.checked = true;
+                this.selectedAircraft = aircraftList[0].aircraftNumber;
+                console.log('✅ Selected first aircraft:', this.selectedAircraft);
+            }
+        }
+    }
+
+    async handleLoadClick() {
+        const fromDate = document.getElementById('historyFromDate').value;
+        const toDate = document.getElementById('historyToDate').value;
+
+        if (!fromDate || !toDate) {
+            this.showError('กรุณาเลือกวันที่');
+            return;
+        }
+
+        if (!this.validateDateRange(fromDate, toDate)) {
+            return;
+        }
+
+        await this.loadDateRange(fromDate, toDate);
+    }
+
+    validateDateRange(fromDate, toDate) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+
+        if (from > to) {
+            this.showError('วันที่เริ่มต้นต้องน้อยกว่าวันสิ้นสุด');
+            return false;
+        }
+
+        const daysDiff = Math.floor((to - from) / (1000 * 60 * 60 * 24)) + 1;
+        if (daysDiff > 90) {
+            this.showError('ช่วงวันต้องไม่เกิน 90 วัน');
+            return false;
+        }
+
+        return true;
+    }
+
+    getDateRange(fromDate, toDate) {
+        const dates = [];
+        const currentDate = new Date(fromDate + 'T00:00:00');
+        const endDate = new Date(toDate + 'T00:00:00');
+
+        while (currentDate <= endDate) {
+            dates.push(currentDate.toISOString().split('T')[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        return dates;
+    }
+
+    async loadDateRange(fromDate, toDate) {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        this.showLoading();
+
+        try {
+            const dates = this.getDateRange(fromDate, toDate);
+            this.dailyHistoryData = [];
+            console.log(`📅 Loading data for ${dates.length} dates:`, dates.slice(0, 3), '...');
+            console.log('🔍 flightStatusService available:', typeof flightStatusService !== 'undefined');
+
+            for (const date of dates) {
+                try {
+                    let data = this.getCacheData(date);
+                    
+                    if (!data && typeof flightStatusService !== 'undefined') {
+                        console.log(`🔄 Fetching data from service for ${date}`);
+                        data = await flightStatusService.fetchAircraftData(date);
+                        console.log(`📦 Service returned for ${date}:`, data ? `${data.length} aircraft` : 'null');
+                        if (data) {
+                            this.setCacheData(date, data);
+                        }
+                    } else if (!data) {
+                        console.warn(`⚠️ flightStatusService not available for ${date}`);
+                    }
+
+                    if (data && Array.isArray(data)) {
+                        console.log(`✅ Added ${data.length} aircraft for ${date}`);
+                        console.log('Sample aircraft:', data.slice(0, 1));
+                        this.dailyHistoryData.push({
+                            date: date,
+                            aircraftData: data
+                        });
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Error loading data for ${date}:`, error.message);
+                }
+            }
+
+            console.log(`✅ Total loaded: ${this.dailyHistoryData.length} days with data`);
+            if (this.dailyHistoryData.length > 0) {
+                console.log('📊 Sample day data:', this.dailyHistoryData[0]);
+            } else {
+                console.warn('⚠️ No data loaded from any date');
+            }
+            
+            this.buildAircraftSelector();
+            this.showSuccess(`โหลดข้อมูล ${this.dailyHistoryData.length} วัน สำเร็จ`);
+        } catch (error) {
+            console.error('❌ Error loading date range:', error);
+            this.showError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+        } finally {
+            this.hideLoading();
+            this.isLoading = false;
+        }
+    }
+
+    getCacheData(date) {
+        const cacheKey = this.cacheKeyPrefix + date;
+        try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed.timestamp && Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+                    console.log(`📦 Cache hit for ${date}`);
+                    return parsed.data;
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ Cache retrieval error:', e.message);
+        }
+        return null;
+    }
+
+    setCacheData(date, data) {
+        const cacheKey = this.cacheKeyPrefix + date;
+        try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+                data: data,
+                timestamp: Date.now()
+            }));
+        } catch (e) {
+            console.warn('⚠️ Cache storage error:', e.message);
+        }
+    }
+
+    updateTable() {
+        const tbody = document.getElementById('dailyHistoryBody');
+
+        if (!tbody) {
+            console.error('Table body not found');
+            return;
+        }
+
+        if (!this.selectedAircraft) {
+            tbody.innerHTML = '<tr><td colspan="8" class="no-data">กรุณาเลือกเครื่องบิน</td></tr>';
+            return;
+        }
+
+        if (this.dailyHistoryData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="no-data">ไม่มีข้อมูล</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+
+        for (const dailyData of this.dailyHistoryData) {
+            const foundAircraft = dailyData.aircraftData.find(a => a.aircraftNumber === this.selectedAircraft);
+            
+            const row = document.createElement('tr');
+
+            const dateCell = document.createElement('td');
+            dateCell.className = 'date-col';
+            dateCell.textContent = this.formatDateLong(dailyData.date);
+            row.appendChild(dateCell);
+
+            const flightHoursCell = document.createElement('td');
+            flightHoursCell.textContent = foundAircraft ? (foundAircraft.flightHours || '-') : '-';
+            row.appendChild(flightHoursCell);
+
+            const engineHours1Cell = document.createElement('td');
+            engineHours1Cell.textContent = foundAircraft ? (foundAircraft.engineHours1 || '-') : '-';
+            row.appendChild(engineHours1Cell);
+
+            const engineHours2Cell = document.createElement('td');
+            engineHours2Cell.textContent = foundAircraft ? (foundAircraft.engineHours2 || '-') : '-';
+            row.appendChild(engineHours2Cell);
+
+            const checkStatusCell = document.createElement('td');
+            checkStatusCell.textContent = foundAircraft ? (foundAircraft.checkStatus || '-') : '-';
+            row.appendChild(checkStatusCell);
+
+            const baseCell = document.createElement('td');
+            baseCell.textContent = foundAircraft ? (foundAircraft.base || '-') : '-';
+            row.appendChild(baseCell);
+
+            const mechanicCell = document.createElement('td');
+            mechanicCell.textContent = foundAircraft ? (foundAircraft.mechanic || '-') : '-';
+            row.appendChild(mechanicCell);
+
+            const remarksCell = document.createElement('td');
+            remarksCell.textContent = foundAircraft ? (foundAircraft.remarks || '-') : '-';
+            row.appendChild(remarksCell);
+
+            tbody.appendChild(row);
+        }
+    }
+
+    getAllAircraftList() {
+        const aircraftMap = new Map();
+
+        for (const dailyData of this.dailyHistoryData) {
+            for (const aircraft of dailyData.aircraftData) {
+                if (!aircraftMap.has(aircraft.aircraftNumber)) {
+                    aircraftMap.set(aircraft.aircraftNumber, {
+                        aircraftNumber: aircraft.aircraftNumber,
+                        name: aircraft.name || 'N/A'
+                    });
+                }
+            }
+        }
+
+        const aircraftList = Array.from(aircraftMap.values());
+        aircraftList.sort((a, b) => a.aircraftNumber.localeCompare(b.aircraftNumber));
+        
+        return aircraftList;
+    }
+
+    buildAircraftSelector() {
+        const wrapper = document.getElementById('aircraftSelectorWrapper');
+        const list = document.getElementById('aircraftSelectorList');
+
+        console.log('🔍 buildAircraftSelector called');
+        console.log('📦 dailyHistoryData length:', this.dailyHistoryData.length);
+        
+        if (!wrapper || !list) {
+            console.error('❌ Aircraft selector elements not found');
+            return;
+        }
+
+        const allAircraft = this.getAllAircraftList();
+        console.log('✈️ Found aircraft:', allAircraft);
+
+        list.innerHTML = '';
+        
+        if (allAircraft.length === 0) {
+            console.warn('⚠️ No aircraft found');
+            list.innerHTML = '<div style="padding: 12px; color: #999; font-size: 13px;">ยังไม่มีข้อมูลเครื่องบิน</div>';
+            return;
+        }
+
+        for (const aircraft of allAircraft) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'aircraft-radio-item';
+
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'aircraft-selector';
+            radio.value = aircraft.aircraftNumber;
+            radio.id = `aircraft-${aircraft.aircraftNumber}`;
+            radio.addEventListener('change', (e) => this.handleAircraftSelection(e));
+
+            const label = document.createElement('label');
+            label.htmlFor = `aircraft-${aircraft.aircraftNumber}`;
+            label.textContent = `${aircraft.aircraftNumber} - ${aircraft.name}`;
+
+            itemDiv.appendChild(radio);
+            itemDiv.appendChild(label);
+            list.appendChild(itemDiv);
+        }
+
+        console.log('✅ Aircraft selector populated');
+
+        if (allAircraft.length > 0) {
+            const firstRadio = document.getElementById(`aircraft-${allAircraft[0].aircraftNumber}`);
+            if (firstRadio) {
+                firstRadio.checked = true;
+                this.selectedAircraft = allAircraft[0].aircraftNumber;
+                console.log('✅ Selected first aircraft:', this.selectedAircraft);
+                this.updateTable();
+            }
+        }
+    }
+
+    handleAircraftSelection(event) {
+        this.selectedAircraft = event.target.value;
+        this.updateTable();
+    }
+
+    formatDate(dateStr) {
+        const date = new Date(dateStr + 'T00:00:00');
+        const options = { month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('th-TH', options);
+    }
+
+    formatDateLong(dateStr) {
+        const date = new Date(dateStr + 'T00:00:00');
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
+    }
+
+    showLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+    }
+
+    hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+    }
+
+    showError(message) {
+        console.error('Error:', message);
+        const tbody = document.getElementById('dailyHistoryBody');
+        if (tbody) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'history-error-message';
+            errorDiv.textContent = message;
+            
+            const section = document.getElementById('dailyHistorySection');
+            if (section) {
+                const existingError = section.querySelector('.history-error-message');
+                if (existingError) {
+                    existingError.remove();
+                }
+                section.insertBefore(errorDiv, section.querySelector('.history-controls').nextElementSibling);
+                
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+    }
+
+    showSuccess(message) {
+        console.log('Success:', message);
+        const section = document.getElementById('dailyHistorySection');
+        if (section) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'history-success-message';
+            successDiv.textContent = message;
+            
+            const existingSuccess = section.querySelector('.history-success-message');
+            if (existingSuccess) {
+                existingSuccess.remove();
+            }
+            section.insertBefore(successDiv, section.querySelector('.history-controls').nextElementSibling);
+            
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    successDiv.remove();
+                }
+            }, 4000);
+        }
+    }
+
+    exportToExcel() {
+        if (!this.selectedAircraft) {
+            this.showError('กรุณาเลือกเครื่องบิน');
+            return;
+        }
+
+        if (this.dailyHistoryData.length === 0) {
+            this.showError('ไม่มีข้อมูลที่จะส่งออก');
+            return;
+        }
+
+        try {
+            const csvContent = this.generateCSV();
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const fromDate = document.getElementById('historyFromDate').value;
+            const toDate = document.getElementById('historyToDate').value;
+            const filename = `Daily_History_${this.selectedAircraft}_${fromDate}_to_${toDate}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            this.showSuccess('ส่งออกข้อมูลสำเร็จ');
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showError('เกิดข้อผิดพลาดในการส่งออกข้อมูล');
+        }
+    }
+
+    generateCSV() {
+        let csv = 'วันที่,ชั่วโมงบิน,เครื่องยนต์ ย1,เครื่องยนต์ ย2,ฐานที่ตั้ง,ช่าง,หมายเหตุ\n';
+
+        for (const dailyData of this.dailyHistoryData) {
+            const foundAircraft = dailyData.aircraftData.find(a => a.aircraftNumber === this.selectedAircraft);
+            
+            csv += `"${this.formatDateLong(dailyData.date)}"`;
+            csv += `,"${foundAircraft ? (foundAircraft.flightHours || '-') : '-'}"`;
+            csv += `,"${foundAircraft ? (foundAircraft.engineHours1 || '-') : '-'}"`;
+            csv += `,"${foundAircraft ? (foundAircraft.engineHours2 || '-') : '-'}"`;
+            csv += `,"${foundAircraft ? (foundAircraft.base || '-') : '-'}"`;
+            csv += `,"${foundAircraft ? (foundAircraft.mechanic || '-') : '-'}"`;
+            csv += `,"${foundAircraft ? (foundAircraft.remarks || '-') : '-'}"`;
+            csv += '\n';
+        }
+
+        return csv;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     new HoursDashboardManager();
+    new DailyHistoryManager();
 });

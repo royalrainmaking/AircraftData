@@ -110,6 +110,51 @@
                     <canvas id="hoursChart"></canvas>
                 </div>
             </section>
+
+            <section class="daily-history-section" id="dailyHistorySection">
+                <h3 class="section-title">ข้อมูลประวัติรายวัน</h3>
+                
+                <div class="history-controls">
+                    <div class="controls-group">
+                        <label for="historyFromDate">จากวันที่:</label>
+                        <input type="date" id="historyFromDate" class="date-input">
+                    </div>
+                    <div class="controls-group">
+                        <label for="historyToDate">ถึงวันที่:</label>
+                        <input type="date" id="historyToDate" class="date-input">
+                    </div>
+                    <button id="loadHistoryBtn" class="btn btn-primary">โหลดข้อมูล</button>
+                    <button id="exportHistoryBtn" class="btn btn-secondary">ส่งออก Excel</button>
+                </div>
+
+                <div class="aircraft-selector-wrapper" id="aircraftSelectorWrapper">
+                    <div class="aircraft-selector-label">เลือกเครื่องบิน:</div>
+                    <div class="aircraft-selector-list" id="aircraftSelectorList">
+                    </div>
+                </div>
+
+                <div class="daily-history-table-wrapper">
+                    <div class="table-container" id="dailyHistoryTableContainer">
+                        <table class="daily-history-table" id="dailyHistoryTable">
+                            <thead id="dailyHistoryHead">
+                                <tr>
+                                    <th class="date-col">วันที่</th>
+                                    <th>ชั่วโมงบิน</th>
+                                    <th>เครื่องยนต์ ย1</th>
+                                    <th>เครื่องยนต์ ย2</th>
+                                    <th>A CHECK</th>
+                                    <th>ฐานที่ตั้ง</th>
+                                    <th>ช่าง</th>
+                                    <th>หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dailyHistoryBody">
+                                <tr><td colspan="8" class="no-data">ยังไม่มีข้อมูล</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <!-- Developer Credit -->
