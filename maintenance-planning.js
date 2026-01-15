@@ -7,6 +7,7 @@ class MaintenancePlanningManager {
         this.dailyHoursMap = new Map();
         this.defaultDailyHours = 0;
         this.currentYear = new Date().getFullYear();
+        this.aircraftModelMap = new Map();
         
         this.init();
     }
@@ -164,14 +165,29 @@ class MaintenancePlanningManager {
         });
     }
 
-    parseTimeToDecimal(timeStr) {
+    parseTimeToDecimal(timeStr, isSKA = false) {
         if (!timeStr || timeStr === '-' || typeof timeStr !== 'string') return null;
-        if (timeStr.includes(':')) {
-            const [hh, mm] = timeStr.split(':').map(Number);
+        
+        // Remove commas from numbers like 2,724.24
+        const cleanStr = timeStr.replace(/,/g, '');
+
+        if (cleanStr.includes(':')) {
+            const [hh, mm] = cleanStr.split(':').map(Number);
             return hh + (mm / 60);
         }
-        const val = parseFloat(timeStr);
-        return isNaN(val) ? null : val;
+        
+        const val = parseFloat(cleanStr);
+        if (isNaN(val)) return null;
+
+        // Special handling for SKA-350: .24 means 24 minutes
+        if (isSKA && cleanStr.includes('.')) {
+            const parts = cleanStr.split('.');
+            const hh = parseInt(parts[0]);
+            const mm = parseInt(parts[1].substring(0, 2)); // Take only first 2 digits of decimal as minutes
+            return hh + (mm / 60);
+        }
+
+        return val;
     }
 
     parseCSV(csvText) {
@@ -220,7 +236,11 @@ class MaintenancePlanningManager {
 
     projectYear(remainingHours, dailyHours) {
         if (remainingHours <= 0) return this.currentYear;
-        if (!dailyHours || dailyHours <= 0) return null;
+        
+        // If daily hours is 0 but remaining is very low, assume it's due this year
+        if (!dailyHours || dailyHours <= 0) {
+            return (remainingHours < 50) ? this.currentYear : null;
+        }
         
         const daysRemaining = remainingHours / dailyHours;
         const projectedDate = new Date();
@@ -241,6 +261,27 @@ class MaintenancePlanningManager {
         return y;
     }
 
+    formatDecimalToTime(decimal, isSKA = false, isPropeller = false) {
+        if (decimal === null || isNaN(decimal)) return '-';
+        
+        // Special case: Propeller TBO often uses Year format (e.g., 6:00 = 6 Years)
+        if (isPropeller && decimal >= 1 && decimal <= 12 && (decimal % 1 === 0)) {
+            return `${Math.floor(decimal)} Y`;
+        }
+
+        const absDecimal = Math.abs(decimal);
+        const hh = Math.floor(absDecimal);
+        const mm = Math.round((absDecimal - hh) * 60);
+        const sign = decimal < 0 ? '-' : '';
+        
+        if (isSKA) {
+            // SKA format uses .MM (e.g., 4628.24)
+            return `${sign}${hh.toLocaleString()}.${mm.toString().padStart(2, '0')}`;
+        }
+        
+        return `${sign}${hh.toLocaleString()}:${mm.toString().padStart(2, '0')}`;
+    }
+
     renderTable() {
         const tbody = document.getElementById('planningTableBody');
         tbody.innerHTML = '';
@@ -254,8 +295,10 @@ class MaintenancePlanningManager {
         tbody.appendChild(acHeader);
 
         this.aircraftData.forEach(ac => {
-            const currentHours = this.parseTimeToDecimal(ac.flightHours);
-            let targetHours = this.parseTimeToDecimal(ac.checkStatus);
+            this.aircraftModelMap.set(ac.aircraftNumber, ac.model);
+            const isSKA = ac.model?.includes('SKA') || ac.model?.includes('King Air');
+            const currentHours = this.parseTimeToDecimal(ac.flightHours, isSKA);
+            let targetHours = this.parseTimeToDecimal(ac.checkStatus, isSKA);
             let remaining = (targetHours && currentHours) ? targetHours - currentHours : null;
             let projectedYear = null;
             const dailyHours = this.getDailyHours(ac.aircraftNumber);
@@ -310,16 +353,17 @@ class MaintenancePlanningManager {
                 this.appendRow(tbody, {
                     name: ac.name + ' (' + ac.aircraftNumber + ')',
                     sn: ac.aircraftNumber,
-                    current: currentHours.toFixed(1),
-                    target: targetHours ? targetHours.toFixed(1) : '-',
-                    remaining: remaining !== null ? remaining.toFixed(1) : '-',
-                    daily: dailyHours.toFixed(2),
+                    current: currentHours,
+                    target: targetHours,
+                    remaining: remaining,
+                    daily: dailyHours,
                     projectedYear: projectedYear,
                     type: 'aircraft',
                     tbo: tbo,
                     hsi: hsi,
                     remark: remark,
-                    installedIn: ac.aircraftNumber
+                    installedIn: ac.aircraftNumber,
+                    isSKA: isSKA
                 });
             }
         });
@@ -331,17 +375,22 @@ class MaintenancePlanningManager {
 
         const aircraftHoursMap = new Map();
         this.aircraftData.forEach(ac => {
-            aircraftHoursMap.set(ac.aircraftNumber, this.parseTimeToDecimal(ac.flightHours));
+            const isSKA = ac.model?.includes('SKA') || ac.model?.includes('King Air');
+            aircraftHoursMap.set(ac.aircraftNumber, this.parseTimeToDecimal(ac.flightHours, isSKA));
         });
 
         this.engineData.forEach((row, idx) => {
             if (idx === 0 || row.length < 3 || !row[1] || row[1] === 'S/N') return;
 
-            const model = row[0];
-            const sn = row[1];
-            const overhaulDue = parseFloat(row[2]?.replace(/,/g, ''));
-            let installedIn = row[6];
-
+            const model = row[0] || '';
+            const sn = row[1] || '';
+            let installedIn = row[6] || '';
+            
+            const acModel = this.aircraftModelMap.get(installedIn);
+            const isSKA = (acModel?.includes('SKA') || acModel?.includes('King Air') || model.includes('PT6A-60A'));
+            
+            const overhaulDue = this.parseTimeToDecimal(row[2], isSKA);
+            
             // Try to find which aircraft this engine belongs to from aircraftDetails
             if (this.aircraftDetails && this.aircraftDetails.length > 0) {
                 const acWithThisEngine = this.aircraftDetails.find(ac => 
@@ -353,7 +402,7 @@ class MaintenancePlanningManager {
                 }
             }
 
-            let currentHours = parseFloat(row[3]?.replace(/,/g, ''));
+            let currentHours = this.parseTimeToDecimal(row[3], isSKA);
             if (installedIn && aircraftHoursMap.has(installedIn)) {
                 currentHours = aircraftHoursMap.get(installedIn);
             }
@@ -408,16 +457,17 @@ class MaintenancePlanningManager {
                 this.appendRow(tbody, {
                     name: `Engine ${model} [in ${installedIn || '-'}]`,
                     sn: sn,
-                    current: currentHours.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}),
-                    target: overhaulDue.toLocaleString(),
-                    remaining: remaining.toFixed(1),
-                    daily: dailyHours.toFixed(2),
+                    current: currentHours,
+                    target: overhaulDue,
+                    remaining: remaining,
+                    daily: dailyHours,
                     projectedYear: projectedYear,
                     type: 'engine',
                     tbo: tbo,
                     hsi: hsi,
                     remark: remarkFromDetails || row[21] || '',
-                    installedIn: installedIn
+                    installedIn: installedIn,
+                    isSKA: isSKA
                 });
             }
         });
@@ -433,10 +483,8 @@ class MaintenancePlanningManager {
             let projectedYear = null;
             const model = row[0];
             const sn = row[1];
-            const overhaulDue = parseFloat(row[2]?.replace(/,/g, ''));
-            const dueDateStr = row[4];
-            let remark = row[5] || '';
             
+            let remark = row[5] || '';
             let installedIn = null;
             
             // Try to find which aircraft this propeller belongs to from aircraftDetails first (more reliable)
@@ -466,6 +514,11 @@ class MaintenancePlanningManager {
                     }
                 }
             }
+
+            const acModel = this.aircraftModelMap.get(installedIn);
+            const isSKA = (acModel?.includes('SKA') || acModel?.includes('King Air') || model.includes('Hartzell HC-E4N-5'));
+            const overhaulDue = this.parseTimeToDecimal(row[2], isSKA);
+            const dueDateStr = row[4];
 
             let tbo = '-';
             let remaining = null;
@@ -523,7 +576,7 @@ class MaintenancePlanningManager {
             const dailyHours = this.getDailyHours(installedIn);
             
             // If we have remaining hours, we can calculate/override projectedYear
-            if (remaining !== null && dailyHours > 0) {
+            if (remaining !== null) {
                 const calcYear = this.projectYear(remaining, dailyHours);
                 if (calcYear) projectedYear = calcYear;
             }
@@ -535,15 +588,16 @@ class MaintenancePlanningManager {
             this.appendRow(tbody, {
                 name: `Propeller ${model} [in ${installedIn || '-'}]`,
                 sn: sn,
-                current: '-',
-                target: overhaulDue ? overhaulDue.toLocaleString() : '-',
-                remaining: remaining !== null ? remaining.toFixed(1) : '-',
-                daily: dailyHours.toFixed(2),
+                current: null,
+                target: overhaulDue,
+                remaining: remaining,
+                daily: dailyHours,
                 projectedYear: projectedYear,
                 type: 'propeller',
                 tbo: tbo,
                 remark: remarkFromDetails || remark,
-                installedIn: installedIn
+                installedIn: installedIn,
+                isSKA: isSKA
             });
         });
 
@@ -567,16 +621,18 @@ class MaintenancePlanningManager {
         const row = document.createElement('tr');
         row.className = 'type-' + data.type;
         
-        const isNumericRemaining = !isNaN(parseFloat(data.remaining));
-        const remainingVal = isNumericRemaining ? parseFloat(data.remaining) : 9999;
+        const remainingVal = (data.remaining !== null && !isNaN(data.remaining)) ? data.remaining : 9999;
+        const dailyVal = (data.daily !== null && !isNaN(data.daily)) ? data.daily : 0;
+        const isSKA = data.isSKA || false;
+        const isPropeller = data.type === 'propeller';
 
         let cells = `
             <td style="text-align: left; font-weight: bold;">${data.name}</td>
             <td>${data.sn}</td>
-            <td>${data.current}</td>
-            <td>${data.target}</td>
-            <td style="color: ${remainingVal < 50 ? '#ff3b30' : 'inherit'}; font-weight: ${remainingVal < 50 ? 'bold' : 'normal'}">${data.remaining}</td>
-            <td>${data.daily}</td>
+            <td>${this.formatDecimalToTime(data.current, isSKA, isPropeller)}</td>
+            <td>${this.formatDecimalToTime(data.target, isSKA, isPropeller)}</td>
+            <td style="color: ${remainingVal < 200 ? '#ff3b30' : 'inherit'}; font-weight: ${remainingVal < 200 ? 'bold' : 'normal'}">${this.formatDecimalToTime(data.remaining, isSKA, isPropeller)}</td>
+            <td>${this.formatDecimalToTime(data.daily, isSKA, false)}</td>
         `;
 
         for (let i = 0; i < 5; i++) {
