@@ -5,6 +5,7 @@ class MaintenancePlanningManager {
         this.propellerData = [];
         this.aircraftDetails = [];
         this.dailyHoursMap = new Map();
+        this.dailyHours120Map = new Map();
         this.defaultDailyHours = 0;
         this.currentYear = new Date().getFullYear();
         this.aircraftModelMap = new Map();
@@ -73,12 +74,12 @@ class MaintenancePlanningManager {
             this.aircraftData = todayData || [];
             
             try {
-                // Get data from 1 year ago or oldest available for average calculation
+                // 1.1 Calculate Yearly Average (for long term planning)
                 const oneYearAgoDate = new Date();
                 oneYearAgoDate.setDate(oneYearAgoDate.getDate() - 365);
                 const oneYearAgoStr = oneYearAgoDate.toISOString().split('T')[0];
                 
-                console.log(`📊 กำลังคำนวณค่าเฉลี่ย (ย้อนหลังไม่เกิน 1 ปี หรือเท่าที่มีข้อมูล)`);
+                console.log(`📊 กำลังคำนวณค่าเฉลี่ยปี (ย้อนหลังไม่เกิน 1 ปี หรือเท่าที่มีข้อมูล)`);
                 const historicalResult = await flightService.fetchHistoricalData(oneYearAgoStr);
                 
                 if (todayData && historicalResult && historicalResult.data) {
@@ -89,7 +90,7 @@ class MaintenancePlanningManager {
                     const date2 = new Date(pastDateStr);
                     const diffDays = Math.max(1, Math.round(Math.abs((date1 - date2) / (24 * 60 * 60 * 1000))));
                     
-                    console.log(`📅 ช่วงเวลาที่ใช้คำนวณ: ${pastDateStr} ถึง ${today} (รวม ${diffDays} วัน)`);
+                    console.log(`📅 ช่วงเวลาที่ใช้คำนวณปี: ${pastDateStr} ถึง ${today} (รวม ${diffDays} วัน)`);
 
                     todayData.forEach(ac => {
                         const pastAc = pastData.find(p => p.aircraftNumber === ac.aircraftNumber);
@@ -100,10 +101,44 @@ class MaintenancePlanningManager {
                             if (todayHours !== null && pastHours !== null) {
                                 const hoursDiff = todayHours - pastHours;
                                 if (hoursDiff >= 0) {
-                                    // Average over actual days difference
                                     const avgDaily = hoursDiff / diffDays;
                                     this.dailyHoursMap.set(ac.aircraftNumber, avgDaily);
-                                    console.log(`✈️ ${ac.aircraftNumber}: เฉลี่ย ${diffDays} วัน = ${avgDaily.toFixed(3)} ชม./วัน (รวม ${hoursDiff.toFixed(1)} ชม.)`);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 1.2 Calculate 120-day Average (for monthly estimation)
+                const hundredTwentyDaysAgoDate = new Date();
+                hundredTwentyDaysAgoDate.setDate(hundredTwentyDaysAgoDate.getDate() - 120);
+                const hundredTwentyDaysAgoStr = hundredTwentyDaysAgoDate.toISOString().split('T')[0];
+                
+                console.log(`📊 กำลังคำนวณค่าเฉลี่ย 120 วัน (ย้อนหลังไม่เกิน 120 วัน หรือเท่าที่มีข้อมูล)`);
+                const hist120Result = await flightService.fetchHistoricalData(hundredTwentyDaysAgoStr);
+                
+                if (todayData && hist120Result && hist120Result.data) {
+                    const pastData = hist120Result.data;
+                    const pastDateStr = hist120Result.date;
+                    
+                    const date1 = new Date(today);
+                    const date2 = new Date(pastDateStr);
+                    const diffDays = Math.max(1, Math.round(Math.abs((date1 - date2) / (24 * 60 * 60 * 1000))));
+                    
+                    console.log(`📅 ช่วงเวลาที่ใช้คำนวณ 120 วัน: ${pastDateStr} ถึง ${today} (รวม ${diffDays} วัน)`);
+
+                    todayData.forEach(ac => {
+                        const pastAc = pastData.find(p => p.aircraftNumber === ac.aircraftNumber);
+                        if (pastAc) {
+                            const todayHours = this.parseTimeToDecimal(ac.flightHours);
+                            const pastHours = this.parseTimeToDecimal(pastAc.flightHours);
+                            
+                            if (todayHours !== null && pastHours !== null) {
+                                const hoursDiff = todayHours - pastHours;
+                                if (hoursDiff >= 0) {
+                                    const avgDaily = hoursDiff / diffDays;
+                                    this.dailyHours120Map.set(ac.aircraftNumber, avgDaily);
+                                    console.log(`✈️ ${ac.aircraftNumber}: เฉลี่ย 120 วัน = ${avgDaily.toFixed(3)} ชม./วัน (รวม ${hoursDiff.toFixed(1)} ชม.)`);
                                 }
                             }
                         }
@@ -282,7 +317,190 @@ class MaintenancePlanningManager {
         return `${sign}${hh.toLocaleString()}:${mm.toString().padStart(2, '0')}`;
     }
 
+    formatMonthYear(date) {
+        const months = [
+            "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+        ];
+        return `${months[date.getMonth()]} ${date.getFullYear() + 543}`;
+    }
+
+    getThumbnail(name, type) {
+        let imgSrc = 'img/head.jpg'; // Default
+        const upperName = (name || '').toUpperCase();
+
+        if (type === 'engine') imgSrc = 'img/engine.jpg';
+        else if (type === 'propeller') imgSrc = 'img/propeller.jpeg';
+        else if (upperName.includes('L410')) imgSrc = 'img/L410NG.jpg';
+        else if (upperName.includes('CASA') || upperName.includes('212')) imgSrc = 'img/Casa_NC212i.jpg';
+        else if (upperName.includes('CN235') || upperName.includes('CN 235') || upperName.includes('CN-235')) imgSrc = 'img/CN235.jpg';
+        else if (upperName.includes('CARAVAN')) imgSrc = 'img/Caravan.jpg';
+        else if (upperName.includes('SKA') || upperName.includes('KING AIR')) imgSrc = 'img/SuperKingAir350.jpg';
+        else if (upperName.includes('AS350')) imgSrc = 'img/AS350 B2.jpg';
+        else if (upperName.includes('206')) imgSrc = 'img/BELL 206B3.jpg';
+        else if (upperName.includes('407')) imgSrc = 'img/BELL 407.jpg';
+        else if (upperName.includes('412')) imgSrc = 'img/BELL 412 EP.jpg';
+        else if (upperName.includes('EC130') || upperName.includes('H130')) imgSrc = 'img/EC130 (H130 T2).png';
+
+        return imgSrc;
+    }
+
+    renderMonthlyEstimation() {
+        const tbody = document.getElementById('monthlyTableBody');
+        const theadRow = document.getElementById('monthlyTableHeader');
+        if (!tbody || !theadRow) return;
+
+        tbody.innerHTML = '';
+        
+        // Setup dynamic headers for next 12 months
+        const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+        const now = new Date();
+        const displayMonths = [];
+        
+        // Clear existing month headers (keep first 'Aircraft' and 'Remaining' columns)
+        while (theadRow.cells.length > 2) {
+            theadRow.deleteCell(2);
+        }
+
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            const monthIdx = d.getMonth();
+            const yearBE = (d.getFullYear() + 543) % 100;
+            const headerText = `${months[monthIdx]} ${yearBE}`;
+            
+            displayMonths.push({
+                month: monthIdx,
+                year: d.getFullYear(),
+                label: headerText
+            });
+
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            theadRow.appendChild(th);
+        }
+
+        // Filter and sort aircraft that have A-check data
+        const estimationData = this.aircraftData
+            .map(ac => {
+                const isSKA = ac.model?.includes('SKA') || ac.model?.includes('King Air');
+                const currentHours = this.parseTimeToDecimal(ac.flightHours, isSKA);
+                const targetHours = this.parseTimeToDecimal(ac.checkStatus, isSKA);
+                
+                let remaining = (targetHours && currentHours) ? targetHours - currentHours : null;
+                let checkType = 'A-check';
+                
+                // If remaining is not available, try using remainingCheckHours
+                if (remaining === null && ac.remainingCheckHours && ac.remainingCheckHours !== '-') {
+                    remaining = this.parseTimeToDecimal(ac.remainingCheckHours, isSKA);
+                }
+
+                // If still null, check helicopter-specific fields (100, 150, 300)
+                if (remaining === null && ac.type === 'helicopter') {
+                    const h100 = this.parseTimeToDecimal(ac.remainingHours100);
+                    const h150 = this.parseTimeToDecimal(ac.remainingHours150);
+                    const h300 = this.parseTimeToDecimal(ac.remainingHours300);
+                    
+                    const checks = [
+                        { val: h100, label: 'ครบซ่อม 100 ชั่วโมง:' },
+                        { val: h150, label: 'ครบซ่อม 150 ชั่วโมง:' },
+                        { val: h300, label: 'ครบซ่อม 300 ชั่วโมง:' }
+                    ].filter(c => c.val !== null && c.val > 0);
+                    
+                    if (checks.length > 0) {
+                        const minCheck = checks.reduce((prev, curr) => prev.val < curr.val ? prev : curr);
+                        remaining = minCheck.val;
+                        checkType = minCheck.label;
+                    }
+                }
+
+                const dailyHoursAvg = this.getDailyHours(ac.aircraftNumber);
+                
+                return {
+                    ...ac,
+                    currentHours,
+                    targetHours,
+                    remaining,
+                    checkType,
+                    dailyHoursAvg,
+                    isSKA
+                };
+            })
+            .filter(d => d.remaining !== null)
+            .sort((a, b) => {
+                // Sort by type (aircraft first, then helicopter)
+                if (a.type !== b.type) {
+                    return a.type === 'aircraft' ? -1 : 1;
+                }
+                // Then sort by aircraft number
+                return a.aircraftNumber.localeCompare(b.aircraftNumber, undefined, {numeric: true, sensitivity: 'base'});
+            });
+
+        estimationData.forEach(data => {
+            const tr = document.createElement('tr');
+            tr.className = 'row-image-bg';
+            const imgPath = this.getThumbnail(data.name, data.type);
+            tr.style.backgroundImage = `url('${imgPath}')`;
+            
+            // First column: Full Name (Number)
+            // Second column: Remaining Hours
+            let html = `
+                <td class="type-aircraft" style="${data.type === 'helicopter' ? 'border-left: 5px solid #34c759 !important;' : ''}">
+                    <strong>${data.name} (${data.aircraftNumber})</strong>
+                </td>
+                <td style="font-weight: bold;">${this.formatDecimalToTime(data.remaining, data.isSKA)}</td>
+            `;
+
+            let currentRemaining = data.remaining;
+            const dailyRate = data.dailyHoursAvg;
+            let dueDisplayed = false;
+
+            displayMonths.forEach((m, idx) => {
+                let hoursToDeduct = 0;
+                if (idx === 0) {
+                    const endOfMonth = new Date(m.year, m.month + 1, 0).getDate();
+                    const daysLeft = endOfMonth - now.getDate() + 1;
+                    hoursToDeduct = daysLeft * dailyRate;
+                } else {
+                    const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
+                    hoursToDeduct = daysInMonth * dailyRate;
+                }
+
+                let displayValue = '';
+                
+                if (currentRemaining > 0) {
+                    currentRemaining -= hoursToDeduct;
+                    if (currentRemaining <= 0) {
+                        displayValue = `<span class="due-indicator" style="background-color: #ff3b30; color: white; width: 100%; padding: 2px 0; font-size: 10px; display: block; margin: 0 auto;">${data.checkType}</span>`;
+                        dueDisplayed = true;
+                        currentRemaining = 0;
+                    } else {
+                        // Projected hours removed as requested
+                        displayValue = '';
+                    }
+                } else if (!dueDisplayed) {
+                    // Already due from the start (currentRemaining <= 0 initially)
+                    displayValue = `<span class="due-indicator" style="background-color: #ff3b30; color: white; width: 100%; padding: 2px 0; font-size: 10px; display: block; margin: 0 auto;">${data.checkType}</span>`;
+                    dueDisplayed = true;
+                } else {
+                    // Already displayed DUE in a previous month
+                    displayValue = '-';
+                }
+
+                html += `<td>${displayValue}</td>`;
+            });
+
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        });
+
+        if (estimationData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="13">ไม่พบข้อมูล A-Check</td></tr>`;
+        }
+    }
+
     renderTable() {
+        this.renderMonthlyEstimation();
+        
         const tbody = document.getElementById('planningTableBody');
         tbody.innerHTML = '';
 
@@ -300,6 +518,32 @@ class MaintenancePlanningManager {
             const currentHours = this.parseTimeToDecimal(ac.flightHours, isSKA);
             let targetHours = this.parseTimeToDecimal(ac.checkStatus, isSKA);
             let remaining = (targetHours && currentHours) ? targetHours - currentHours : null;
+            let checkType = 'A-check';
+
+            // If remaining is not available, try using remainingCheckHours
+            if (remaining === null && ac.remainingCheckHours && ac.remainingCheckHours !== '-') {
+                remaining = this.parseTimeToDecimal(ac.remainingCheckHours, isSKA);
+            }
+
+            // For helicopters, check 100/150/300 fields if targetHours/remaining is null
+            if (remaining === null && ac.type === 'helicopter') {
+                const h100 = this.parseTimeToDecimal(ac.remainingHours100);
+                const h150 = this.parseTimeToDecimal(ac.remainingHours150);
+                const h300 = this.parseTimeToDecimal(ac.remainingHours300);
+                
+                const checks = [
+                    { val: h100, label: 'ครบซ่อม 100 ชั่วโมง:' },
+                    { val: h150, label: 'ครบซ่อม 150 ชั่วโมง:' },
+                    { val: h300, label: 'ครบซ่อม 300 ชั่วโมง:' }
+                ].filter(c => c.val !== null && c.val > 0);
+                
+                if (checks.length > 0) {
+                    const minCheck = checks.reduce((prev, curr) => prev.val < curr.val ? prev : curr);
+                    remaining = minCheck.val;
+                    checkType = minCheck.label;
+                }
+            }
+
             let projectedYear = null;
             const dailyHours = this.getDailyHours(ac.aircraftNumber);
 
@@ -358,7 +602,8 @@ class MaintenancePlanningManager {
                     remaining: remaining,
                     daily: dailyHours,
                     projectedYear: projectedYear,
-                    type: 'aircraft',
+                    type: ac.type || 'aircraft',
+                    checkType: checkType,
                     tbo: tbo,
                     hsi: hsi,
                     remark: remark,
@@ -619,8 +864,10 @@ class MaintenancePlanningManager {
 
     appendRow(tbody, data) {
         const row = document.createElement('tr');
-        row.className = 'type-' + data.type;
-        
+        row.className = 'type-' + data.type + ' row-image-bg';
+        const imgPath = this.getThumbnail(data.name, data.type);
+        row.style.backgroundImage = `url('${imgPath}')`;
+
         const remainingVal = (data.remaining !== null && !isNaN(data.remaining)) ? data.remaining : 9999;
         const dailyVal = (data.daily !== null && !isNaN(data.daily)) ? data.daily : 0;
         const isSKA = data.isSKA || false;
@@ -635,30 +882,36 @@ class MaintenancePlanningManager {
             <td>${this.formatDecimalToTime(data.daily, isSKA, false)}</td>
         `;
 
-        for (let i = 0; i < 5; i++) {
-            const year = this.currentYear + i;
-            if (data.projectedYear === year) {
-                const beYear = year + 543;
-                // Escape both double and single quotes for safe use in HTML attributes
-                const dataJson = JSON.stringify(data)
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#39;');
-                
-                let dueLabel = 'OH';
-                if (data.type === 'engine') {
-                    const hsiVal = parseFloat(data.hsi);
-                    if (!isNaN(hsiVal) && hsiVal >= 0) {
-                        dueLabel = 'HSI';
-                    } else {
-                        dueLabel = 'OH';
+        if (data.type === 'helicopter') {
+            for (let i = 0; i < 5; i++) {
+                cells += `<td class="year-col" style="font-style: italic; color: #888; font-size: 11px;">Coming soon</td>`;
+            }
+        } else {
+            for (let i = 0; i < 5; i++) {
+                const year = this.currentYear + i;
+                if (data.projectedYear === year) {
+                    const beYear = year + 543;
+                    // Escape both double and single quotes for safe use in HTML attributes
+                    const dataJson = JSON.stringify(data)
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                    
+                    let dueLabel = 'OH';
+                    if (data.type === 'engine') {
+                        const hsiVal = parseFloat(data.hsi);
+                        if (!isNaN(hsiVal) && hsiVal >= 0) {
+                            dueLabel = 'HSI';
+                        } else {
+                            dueLabel = 'OH';
+                        }
                     }
+                    
+                    cells += `<td class="year-col"><div class="due-indicator" onclick='window.planningManager.showDetails(${dataJson})'>${dueLabel} ${beYear}</div></td>`;
+                } else if (data.projectedYear < year && data.projectedYear !== null) {
+                    cells += `<td class="year-col"></td>`;
+                } else {
+                    cells += `<td class="year-col"></td>`;
                 }
-                
-                cells += `<td class="year-col"><div class="due-indicator" onclick='window.planningManager.showDetails(${dataJson})'>${dueLabel} ${beYear}</div></td>`;
-            } else if (data.projectedYear < year && data.projectedYear !== null) {
-                cells += `<td class="year-col" style="opacity: 0.3; color: #ccc;">-</td>`;
-            } else {
-                cells += `<td class="year-col"></td>`;
             }
         }
 

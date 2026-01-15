@@ -86,6 +86,16 @@
             max-width: 100px;
             font-weight: bold;
         }
+        /* Fixed width for monthly columns */
+        #monthlyEstimationTable th:nth-child(n+3),
+        #monthlyEstimationTable td:nth-child(n+3) {
+            width: 80px;
+            min-width: 80px;
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .due-indicator {
             background-color: #ff3b30;
             color: white;
@@ -106,8 +116,26 @@
             filter: brightness(1.1);
         }
         .type-aircraft { border-left: 5px solid #007bff !important; }
+        .type-helicopter { border-left: 5px solid #34c759 !important; }
         .type-engine { border-left: 5px solid #ff9500 !important; }
         .type-propeller { border-left: 5px solid #34c759 !important; }
+        
+        .row-image-bg {
+            background-repeat: no-repeat;
+            background-position: left center;
+            background-size: auto 100%;
+        }
+        
+        /* Ensure text is readable over background image */
+        .planning-table td {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        .planning-table td:first-child {
+            padding-left: 10px !important;
+            background-color: rgba(244, 244, 244, 0.8) !important;
+        }
         
         .legend {
             display: flex;
@@ -214,6 +242,21 @@
         }
         .detail-label { font-weight: bold; width: 140px; color: #666; }
         .detail-value { flex: 1; color: #111; }
+
+        h2.section-title {
+            margin-top: 40px;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+        h2.section-title i {
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -255,12 +298,29 @@
                     <span>ใบพัด (Propeller)</span>
                 </div>
                 <div class="legend-item">
-                    <div class="due-indicator" style="background-color: #ff3b30; color: white;">Due</div>
+                    <div class="due-indicator" style="background-color: #ff3b30; color: white; width: 85px;">Due</div>
                     <span>ครบกำหนดซ่อมบำรุง</span>
                 </div>
             </div>
 
             <section class="planning-table-wrapper">
+                <h2 class="section-title"><i class="fas fa-calendar-alt"></i> ประมาณการการซ่อมรายเดือน (อ้างอิงการใช้งาน 1 ปีล่าสุด)</h2>
+                <table class="planning-table" id="monthlyEstimationTable">
+                    <thead>
+                        <tr id="monthlyTableHeader">
+                            <th>อากาศยาน</th>
+                            <th>คงเหลือ (ชม.)</th>
+                            <!-- Month columns will be added here via JS -->
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyTableBody">
+                        <!-- Monthly estimation data will be populated here -->
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="planning-table-wrapper">
+                <h2 class="section-title"><i class="fas fa-chart-line"></i> แผนการซ่อมบำรุงล่วงหน้า 5 ปี (Long-term Planning)</h2>
                 <table class="planning-table" id="planningTable">
                     <thead>
                         <tr>
