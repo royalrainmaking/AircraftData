@@ -24,20 +24,56 @@
         }
         .planning-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 14px;
         }
         .planning-table th, .planning-table td {
             padding: 12px 8px;
-            border: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
             text-align: center;
         }
         .planning-table th {
             background-color: #f4f4f4;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 20;
         }
+        /* Sticky Header for row 2 (Years) */
+        .planning-table thead tr:nth-child(2) th {
+            top: var(--header-row1-height, 45px);
+            z-index: 19;
+        }
+        /* Sticky Column 1 */
+        .planning-table th:first-child:not(.year-col),
+        .planning-table td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: #f4f4f4;
+            z-index: 15;
+            border-left: 1px solid #ddd;
+            text-align: left;
+            min-width: 200px;
+        }
+        .planning-table td:first-child {
+            background-color: #fff;
+        }
+        .planning-table tr:hover td:first-child {
+            background-color: #f1f1f1;
+        }
+        /* Intersect of sticky header and sticky column */
+        .planning-table thead tr:first-child th:first-child {
+            z-index: 30;
+            top: 0;
+            left: 0;
+        }
+        .planning-table thead tr:nth-child(2) th:first-child {
+            z-index: 25;
+            top: var(--header-row1-height, 45px);
+            left: 0;
+        }
+
         .planning-table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
@@ -45,7 +81,9 @@
             background-color: #f1f1f1;
         }
         .year-col {
-            width: 80px;
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
             font-weight: bold;
         }
         .due-indicator {
@@ -55,10 +93,21 @@
             padding: 4px;
             font-size: 12px;
             font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+            display: inline-block;
+            width: 85px;
+            text-align: center;
+            box-sizing: border-box;
+            white-space: nowrap;
         }
-        .type-aircraft { border-left: 5px solid #007bff; }
-        .type-engine { border-left: 5px solid #ff9500; }
-        .type-propeller { border-left: 5px solid #34c759; }
+        .due-indicator:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+        .type-aircraft { border-left: 5px solid #007bff !important; }
+        .type-engine { border-left: 5px solid #ff9500 !important; }
+        .type-propeller { border-left: 5px solid #34c759 !important; }
         
         .legend {
             display: flex;
@@ -81,38 +130,90 @@
             height: 20px;
             border-radius: 4px;
         }
-        .settings-panel {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .form-group label {
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .form-group input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
         .category-header {
-            background-color: #e9ecef;
             text-align: left !important;
             font-weight: bold;
             padding-left: 15px !important;
+            position: sticky;
+            top: var(--header-total-height, 90px);
+            left: 0;
+            z-index: 14;
+            color: #333;
         }
+        .category-aircraft { background-color: #e3f2fd !important; border-left: 5px solid #007bff !important; }
+        .category-engine { background-color: #fff3e0 !important; border-left: 5px solid #ff9500 !important; }
+        .category-propeller { background-color: #e8f5e9 !important; border-left: 5px solid #34c759 !important; }
+        
+        .category-header i {
+            margin-right: 8px;
+        }
+        .category-aircraft i { color: #007bff; }
+        .category-engine i { color: #ff9500; }
+        .category-propeller i { color: #34c759; }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: modalSlideDown 0.3s ease-out;
+        }
+        @keyframes modalSlideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { margin: 0; color: #333; }
+        .close-modal {
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+        .close-modal:hover { color: #333; }
+        .modal-body { padding: 20px; color: #444; line-height: 1.6; }
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .detail-item {
+            margin-bottom: 10px;
+            display: flex;
+            border-bottom: 1px dashed #f0f0f0;
+            padding-bottom: 5px;
+        }
+        .detail-label { font-weight: bold; width: 140px; color: #666; }
+        .detail-value { flex: 1; color: #111; }
     </style>
 </head>
 <body>
@@ -139,25 +240,6 @@
                 </div>
             </div>
 
-            <section class="settings-panel">
-                <h3>ตั้งค่าการคำนวณ (Settings)</h3>
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label for="defaultDailyHours">ชั่วโมงบินเฉลี่ยต่อวัน (ค่าเริ่มต้น):</label>
-                        <input type="number" id="defaultDailyHours" value="0" step="0.1" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>ใช้อัตราเพิ่มจริง (เฉลี่ย 60 วันย้อนหลัง):</label>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-                            <input type="checkbox" id="useActualIncrease" checked style="width: 20px; height: 20px;">
-                            <span>เปิดใช้งาน (หากไม่มีข้อมูลจะใช้ค่าเริ่มต้น)</span>
-                        </div>
-                    </div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <button id="recalculateBtn" class="btn btn-primary">คำนวณใหม่</button>
-                </div>
-            </section>
 
             <div class="legend">
                 <div class="legend-item">
@@ -204,6 +286,22 @@
                 </table>
             </section>
         </main>
+
+        <!-- Modal for details -->
+        <div id="detailsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">รายละเอียด</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content populated via JS -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary close-btn">ปิด</button>
+                </div>
+            </div>
+        </div>
 
         <!-- Developer Credit -->
         <div class="developer-credit">

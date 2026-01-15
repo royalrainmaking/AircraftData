@@ -14,17 +14,40 @@ class MaintenancePlanningManager {
     async init() {
         this.showLoading();
         this.setupEventListeners();
+        this.setupModalListeners();
         await this.loadData();
         this.hideLoading();
+        this.adjustStickyHeaders();
+    }
+
+    adjustStickyHeaders() {
+        const firstHeaderRow = document.querySelector('#planningTable thead tr:first-child');
+        if (firstHeaderRow) {
+            const h1 = firstHeaderRow.offsetHeight;
+            document.documentElement.style.setProperty('--header-row1-height', h1 + 'px');
+            
+            const secondHeaderRow = document.querySelector('#planningTable thead tr:nth-child(2)');
+            if (secondHeaderRow) {
+                const h2 = secondHeaderRow.offsetHeight;
+                document.documentElement.style.setProperty('--header-total-height', (h1 + h2) + 'px');
+            }
+        }
     }
 
     setupEventListeners() {
-        const recalculateBtn = document.getElementById('recalculateBtn');
-        if (recalculateBtn) {
-            recalculateBtn.addEventListener('click', () => {
-                this.defaultDailyHours = parseFloat(document.getElementById('defaultDailyHours').value) || 1.5;
-                this.renderTable();
-            });
+        window.addEventListener('resize', () => this.adjustStickyHeaders());
+    }
+
+    setupModalListeners() {
+        const modal = document.getElementById('detailsModal');
+        const closeBtn = document.querySelector('.close-modal');
+        const closeBtnBottom = document.querySelector('.close-btn');
+
+        if (closeBtn) closeBtn.onclick = () => modal.style.display = "none";
+        if (closeBtnBottom) closeBtnBottom.onclick = () => modal.style.display = "none";
+        
+        window.onclick = (event) => {
+            if (event.target == modal) modal.style.display = "none";
         }
     }
 
@@ -187,7 +210,8 @@ class MaintenancePlanningManager {
     }
 
     getDailyHours(aircraftNumber) {
-        const useActual = document.getElementById('useActualIncrease').checked;
+        // Since settings-panel was removed, we default to using actual increase if available
+        const useActual = true;
         if (useActual && this.dailyHoursMap.has(aircraftNumber)) {
             return this.dailyHoursMap.get(aircraftNumber);
         }
@@ -208,13 +232,25 @@ class MaintenancePlanningManager {
         return adYear ? adYear + 543 : null;
     }
 
+    normalizeYear(year) {
+        if (!year) return null;
+        let y = parseInt(year);
+        if (isNaN(y)) return null;
+        if (y < 100) y += (y > 50 ? 1900 : 2000);
+        if (y > 2400) y -= 543;
+        return y;
+    }
+
     renderTable() {
         const tbody = document.getElementById('planningTableBody');
         tbody.innerHTML = '';
 
+        // Update table headers to show dynamic years
+        this.updateTableHeaders();
+
         // --- 1. Render Aircraft Section ---
         const acHeader = document.createElement('tr');
-        acHeader.innerHTML = '<td colspan="11" class="category-header">อากาศยาน (Aircraft) - อ้างอิงจาก A CHECK</td>';
+        acHeader.innerHTML = '<td colspan="11" class="category-header category-aircraft"><i class="fas fa-plane"></i> อากาศยาน (Aircraft) - อ้างอิงจาก A CHECK</td>';
         tbody.appendChild(acHeader);
 
         this.aircraftData.forEach(ac => {
@@ -224,29 +260,29 @@ class MaintenancePlanningManager {
             let projectedYear = null;
             const dailyHours = this.getDailyHours(ac.aircraftNumber);
 
+            let tbo = '-';
+            let hsi = '-';
+            let remark = ac.remarks || '';
+
             // Try to get "Repair Due" date or hours from detailed aircraft info (A CHECK)
             if (this.aircraftDetails && this.aircraftDetails.length > 0) {
                 const acDetail = this.aircraftDetails.find(ad => ad.aircraftId === ac.aircraftNumber);
                 if (acDetail && acDetail.components && acDetail.components.aircraft) {
-                    const repairDue = acDetail.components.aircraft.repairDue;
+                    const comp = acDetail.components.aircraft;
+                    tbo = comp.tboRemaining || '-';
+                    hsi = comp.hsiRemaining || '-';
+                    if (comp.notes) remark = comp.notes;
+                    
+                    const repairDue = comp.repairDue;
                     if (repairDue && repairDue !== '-') {
                         // Check if it's a date (e.g., 17/01/2004 or 2024-12-31)
                         const dateParts = repairDue.split('/');
                         if (dateParts.length === 3 || repairDue.includes('-')) {
-                            let year = null;
                             if (dateParts.length === 3) {
-                                year = parseInt(dateParts[2]);
-                                if (year < 100) year += (year > 50 ? 1900 : 2000);
-                                if (year > 2500) year -= 543;
+                                projectedYear = this.normalizeYear(dateParts[2]);
                             } else {
                                 const d = new Date(repairDue);
-                                if (!isNaN(d.getTime())) year = d.getFullYear();
-                            }
-                            
-                            if (year) {
-                                projectedYear = year;
-                                // If it's a date, we don't necessarily have remaining hours, 
-                                // but we show the target year directly.
+                                if (!isNaN(d.getTime())) projectedYear = d.getFullYear();
                             }
                         } else {
                             // Try as remaining hours
@@ -279,17 +315,20 @@ class MaintenancePlanningManager {
                     remaining: remaining !== null ? remaining.toFixed(1) : '-',
                     daily: dailyHours.toFixed(2),
                     projectedYear: projectedYear,
-                    type: 'aircraft'
+                    type: 'aircraft',
+                    tbo: tbo,
+                    hsi: hsi,
+                    remark: remark,
+                    installedIn: ac.aircraftNumber
                 });
             }
         });
 
         // --- 2. Render Engine Section ---
         const enHeader = document.createElement('tr');
-        enHeader.innerHTML = '<td colspan="11" class="category-header">เครื่องยนต์ (Engine) - อ้างอิงจาก Overhaul Due</td>';
+        enHeader.innerHTML = '<td colspan="11" class="category-header category-engine"><i class="fas fa-cogs"></i> เครื่องยนต์ (Engine) - อ้างอิงจาก Overhaul Due</td>';
         tbody.appendChild(enHeader);
 
-        // Map engines to aircraft hours
         const aircraftHoursMap = new Map();
         this.aircraftData.forEach(ac => {
             aircraftHoursMap.set(ac.aircraftNumber, this.parseTimeToDecimal(ac.flightHours));
@@ -301,46 +340,55 @@ class MaintenancePlanningManager {
             const model = row[0];
             const sn = row[1];
             const overhaulDue = parseFloat(row[2]?.replace(/,/g, ''));
-            const installedIn = row[6]; // Column G (INSTALL IN)
+            let installedIn = row[6];
 
-            // Use aircraft hours from daily report if available, otherwise fallback to TSN from sheet
+            // Try to find which aircraft this engine belongs to from aircraftDetails
+            if (this.aircraftDetails && this.aircraftDetails.length > 0) {
+                const acWithThisEngine = this.aircraftDetails.find(ac => 
+                    ac.components && ac.components.engines && 
+                    ac.components.engines.some(e => e.serialNumber && sn && (e.serialNumber.includes(sn) || sn.includes(e.serialNumber)))
+                );
+                if (acWithThisEngine) {
+                    installedIn = acWithThisEngine.aircraftId;
+                }
+            }
+
             let currentHours = parseFloat(row[3]?.replace(/,/g, ''));
             if (installedIn && aircraftHoursMap.has(installedIn)) {
                 currentHours = aircraftHoursMap.get(installedIn);
             }
 
-            // --- IMPROVED CALCULATION FOR ENGINE ---
-            // If the engine is installed in an aircraft, try to get the "ครบกำหนดซ่อม" (remaining hours)
-            // from the aircraft detailed data (from aircraft-information.html source)
+            let tbo = '-';
+            let hsi = '-';
+            let remarkFromDetails = '';
             let remaining = null;
+
             if (installedIn && this.aircraftDetails && this.aircraftDetails.length > 0) {
                 const acDetail = this.aircraftDetails.find(ad => ad.aircraftId === installedIn);
                 if (acDetail && acDetail.components && acDetail.components.engines) {
-                    // Find the matching engine by S/N or just the correct index if multiple
-                    // We'll try to match S/N first
                     let engineDetail = acDetail.components.engines.find(ed => 
                         ed.serialNumber && sn && (ed.serialNumber.includes(sn) || sn.includes(ed.serialNumber))
                     );
                     
-                    // If not found by S/N, and it's a single engine aircraft or first engine row for this AC
                     if (!engineDetail) {
-                        // Find how many engines of this model are in engineData for this aircraft so far
                         const enginesForThisAC = this.engineData.slice(0, idx + 1).filter(r => r[6] === installedIn);
                         const engineIndex = enginesForThisAC.length - 1;
                         engineDetail = acDetail.components.engines[engineIndex];
                     }
 
-                    if (engineDetail && engineDetail.repairDue && engineDetail.repairDue !== '-') {
-                        remaining = this.parseTimeToDecimal(engineDetail.repairDue);
-                        if (remaining !== null) {
-                            console.log(`🔧 Engine ${sn} in ${installedIn}: ใช้ค่า "ครบกำหนดซ่อม" จากข้อมูลละเอียด = ${remaining} ชม.`);
+                    if (engineDetail) {
+                        tbo = engineDetail.tboRemaining || '-';
+                        hsi = engineDetail.hsiRemaining || '-';
+                        remarkFromDetails = engineDetail.notes || '';
+
+                        if (engineDetail.repairDue && engineDetail.repairDue !== '-') {
+                            remaining = this.parseTimeToDecimal(engineDetail.repairDue);
                         }
                     }
                 }
             }
 
             if (!isNaN(overhaulDue) && !isNaN(currentHours)) {
-                // If we didn't get remaining hours from aircraft details, calculate it
                 if (remaining === null) {
                     const usedInCycle = currentHours % overhaulDue;
                     remaining = overhaulDue - usedInCycle;
@@ -349,85 +397,170 @@ class MaintenancePlanningManager {
                 const dailyHours = this.getDailyHours(installedIn);
                 let projectedYear = this.projectYear(remaining, dailyHours);
 
-                // If engine remaining < 100 and not installed, set to current year
                 if (remaining < 100 && (!installedIn || installedIn === '-' || installedIn.trim() === '')) {
                     projectedYear = this.currentYear;
                 }
 
-                // If already expired, set to current year
                 if (projectedYear !== null && projectedYear < this.currentYear) {
                     projectedYear = this.currentYear;
                 }
 
                 this.appendRow(tbody, {
-                    name: `Engine ${model} (In: ${installedIn || 'N/A'})`,
+                    name: `Engine ${model} [in ${installedIn || '-'}]`,
                     sn: sn,
                     current: currentHours.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}),
                     target: overhaulDue.toLocaleString(),
                     remaining: remaining.toFixed(1),
                     daily: dailyHours.toFixed(2),
                     projectedYear: projectedYear,
-                    type: 'engine'
+                    type: 'engine',
+                    tbo: tbo,
+                    hsi: hsi,
+                    remark: remarkFromDetails || row[21] || '',
+                    installedIn: installedIn
                 });
             }
         });
 
         // --- 3. Render Propeller Section ---
         const propHeader = document.createElement('tr');
-        propHeader.innerHTML = '<td colspan="11" class="category-header">ใบพัด (Propeller) - อ้างอิงจาก Overhaul Hours</td>';
+        propHeader.innerHTML = '<td colspan="11" class="category-header category-propeller"><i class="fas fa-fan"></i> ใบพัด (Propeller) - อ้างอิงจาก Overhaul Hours</td>';
         tbody.appendChild(propHeader);
 
         this.propellerData.forEach((row, idx) => {
             if (idx === 0 || row.length < 3 || !row[1] || row[1] === 'S/N') return;
 
+            let projectedYear = null;
             const model = row[0];
             const sn = row[1];
             const overhaulDue = parseFloat(row[2]?.replace(/,/g, ''));
-            const dueDateStr = row[4]; // Column E (ครบกำหนดซ่อม)
-            const remark = row[5] || '';
+            const dueDateStr = row[4];
+            let remark = row[5] || '';
             
-            // Try to find aircraft number in remark
             let installedIn = null;
-            const acMatch = remark.match(/\d{4}/);
-            if (acMatch) installedIn = acMatch[0];
+            
+            // Try to find which aircraft this propeller belongs to from aircraftDetails first (more reliable)
+            if (this.aircraftDetails && this.aircraftDetails.length > 0) {
+                const acWithThisProp = this.aircraftDetails.find(ac => 
+                    ac.components && ac.components.propellers && 
+                    ac.components.propellers.some(p => p.serialNumber && sn && (p.serialNumber.includes(sn) || sn.includes(p.serialNumber)))
+                );
+                if (acWithThisProp) {
+                    installedIn = acWithThisProp.aircraftId;
+                }
+            }
 
-            // Propeller overhaul calculation based on year from dueDateStr (Column E)
-            let projectedYear = null;
-            if (dueDateStr && dueDateStr !== '-') {
-                // Extract year from date string (e.g., "15/01/2571" or "2028-05-20")
-                const yearMatch = dueDateStr.match(/\d{4}/);
-                if (yearMatch) {
-                    projectedYear = parseInt(yearMatch[0]);
-                    if (projectedYear > 2500) projectedYear -= 543; // Convert BE to AD
+            // Fallback: extract from remark, but avoid common years like 2567 or 2024
+            if (!installedIn) {
+                const acMatch = remark.match(/\d{4}/);
+                if (acMatch) {
+                    const matchedId = acMatch[0];
+                    const currentYearBE = new Date().getFullYear() + 543;
+                    const currentYearAD = new Date().getFullYear();
+                    
+                    // Only accept if it's not a year and it exists in our aircraft list
+                    if (parseInt(matchedId) !== currentYearBE && parseInt(matchedId) !== currentYearAD) {
+                        if (this.aircraftDetails && this.aircraftDetails.some(ac => ac.aircraftId === matchedId)) {
+                            installedIn = matchedId;
+                        }
+                    }
+                }
+            }
+
+            let tbo = '-';
+            let remaining = null;
+            let remarkFromDetails = '';
+
+            if (installedIn && this.aircraftDetails && this.aircraftDetails.length > 0) {
+                const acDetail = this.aircraftDetails.find(ad => ad.aircraftId === installedIn);
+                if (acDetail && acDetail.components && acDetail.components.propellers) {
+                    let propellerDetail = acDetail.components.propellers.find(pd => 
+                        pd.serialNumber && sn && (pd.serialNumber.includes(sn) || sn.includes(pd.serialNumber))
+                    );
+
+                    if (propellerDetail) {
+                        tbo = propellerDetail.tboRemaining || '-';
+                        remarkFromDetails = propellerDetail.notes || '';
+                        if (propellerDetail.repairDue && propellerDetail.repairDue !== '-') {
+                            const repairDue = propellerDetail.repairDue;
+                            // Check if it's a date
+                            const dateParts = repairDue.split('/');
+                            if (dateParts.length === 3 || repairDue.includes('-')) {
+                                if (dateParts.length === 3) {
+                                    projectedYear = this.normalizeYear(dateParts[2]);
+                                } else {
+                                    const d = new Date(repairDue);
+                                    if (!isNaN(d.getTime())) projectedYear = d.getFullYear();
+                                }
+                            } else {
+                                // Try as remaining hours
+                                const val = this.parseTimeToDecimal(repairDue);
+                                if (val !== null) remaining = val;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (dueDateStr && dueDateStr !== '-' && !dueDateStr.includes('ไม่พบข้อมูล')) {
+                // Try to parse as date first (e.g. 25/7/2030)
+                const dateParts = dueDateStr.split('/');
+                if (dateParts.length === 3) {
+                    projectedYear = this.normalizeYear(dateParts[2]);
                 } else {
-                    const parts = dueDateStr.split('/');
-                    if (parts.length === 3) {
-                        let year = parseInt(parts[2]);
-                        if (year < 100) year += (year > 50 ? 1900 : 2000);
-                        if (year > 2500) year -= 543;
-                        projectedYear = year;
+                    const yearMatch = dueDateStr.match(/\d{4}/);
+                    if (yearMatch) {
+                        projectedYear = this.normalizeYear(yearMatch[0]);
+                    } else {
+                        const shortYearMatch = dueDateStr.match(/\d{2}/);
+                        if (shortYearMatch) {
+                            projectedYear = this.normalizeYear(shortYearMatch[0]);
+                        }
                     }
                 }
             }
 
             const dailyHours = this.getDailyHours(installedIn);
+            
+            // If we have remaining hours, we can calculate/override projectedYear
+            if (remaining !== null && dailyHours > 0) {
+                const calcYear = this.projectYear(remaining, dailyHours);
+                if (calcYear) projectedYear = calcYear;
+            }
 
-            // If already expired, set to current year
             if (projectedYear !== null && projectedYear < this.currentYear) {
                 projectedYear = this.currentYear;
             }
 
             this.appendRow(tbody, {
-                name: `Propeller ${model} (In: ${installedIn || 'N/A'})`,
+                name: `Propeller ${model} [in ${installedIn || '-'}]`,
                 sn: sn,
                 current: '-',
                 target: overhaulDue ? overhaulDue.toLocaleString() : '-',
-                remaining: '-',
+                remaining: remaining !== null ? remaining.toFixed(1) : '-',
                 daily: dailyHours.toFixed(2),
                 projectedYear: projectedYear,
-                type: 'propeller'
+                type: 'propeller',
+                tbo: tbo,
+                remark: remarkFromDetails || remark,
+                installedIn: installedIn
             });
         });
+
+        // Ensure sticky headers are correctly positioned after table is populated
+        setTimeout(() => this.adjustStickyHeaders(), 0);
+    }
+
+    updateTableHeaders() {
+        const headerRow = document.querySelector('#planningTable thead tr:nth-child(2)');
+        if (!headerRow) return;
+
+        const yearHeaders = headerRow.querySelectorAll('.year-col');
+        for (let i = 0; i < yearHeaders.length; i++) {
+            const adYear = this.currentYear + i;
+            const beYear = adYear + 543;
+            yearHeaders[i].innerHTML = `${beYear} (${adYear})`;
+        }
     }
 
     appendRow(tbody, data) {
@@ -446,19 +579,67 @@ class MaintenancePlanningManager {
             <td>${data.daily}</td>
         `;
 
-        for (let year = 2026; year <= 2030; year++) {
+        for (let i = 0; i < 5; i++) {
+            const year = this.currentYear + i;
             if (data.projectedYear === year) {
                 const beYear = year + 543;
-                cells += `<td><div class="due-indicator">Due ${beYear}</div></td>`;
+                // Escape both double and single quotes for safe use in HTML attributes
+                const dataJson = JSON.stringify(data)
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+                
+                let dueLabel = 'OH';
+                if (data.type === 'engine') {
+                    const hsiVal = parseFloat(data.hsi);
+                    if (!isNaN(hsiVal) && hsiVal >= 0) {
+                        dueLabel = 'HSI';
+                    } else {
+                        dueLabel = 'OH';
+                    }
+                }
+                
+                cells += `<td class="year-col"><div class="due-indicator" onclick='window.planningManager.showDetails(${dataJson})'>${dueLabel} ${beYear}</div></td>`;
             } else if (data.projectedYear < year && data.projectedYear !== null) {
-                cells += `<td style="opacity: 0.3; color: #ccc;">-</td>`;
+                cells += `<td class="year-col" style="opacity: 0.3; color: #ccc;">-</td>`;
             } else {
-                cells += `<td></td>`;
+                cells += `<td class="year-col"></td>`;
             }
         }
 
         row.innerHTML = cells;
         tbody.appendChild(row);
+    }
+
+    showDetails(data) {
+        const modal = document.getElementById('detailsModal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+
+        title.innerText = `รายละเอียด: ${data.name}`;
+        
+        let content = '';
+        
+        if (data.type === 'engine') {
+            const isInstalled = data.installedIn && data.installedIn !== '-' && data.installedIn !== 'N/A' && data.installedIn !== 'ไม่ระบุ';
+            content += `<div class="detail-item"><div class="detail-label">S/N:</div><div class="detail-value">${data.sn}</div></div>`;
+            if (isInstalled) {
+                content += `<div class="detail-item"><div class="detail-label">ติดตั้งใน:</div><div class="detail-value">${data.installedIn}</div></div>`;
+                content += `<div class="detail-item"><div class="detail-label">TBO คงเหลือ:</div><div class="detail-value">${data.tbo || '-'}</div></div>`;
+                content += `<div class="detail-item"><div class="detail-label">HSI คงเหลือ:</div><div class="detail-value">${data.hsi || '-'}</div></div>`;
+            } else {
+                content += `<div class="detail-item"><div class="detail-label">สถานะ:</div><div class="detail-value">ไม่ได้ติดตั้ง</div></div>`;
+            }
+        } else if (data.type === 'aircraft') {
+            content += `<div class="detail-item"><div class="detail-label">S/N:</div><div class="detail-value">${data.sn}</div></div>`;
+        } else if (data.type === 'propeller') {
+            content += `<div class="detail-item"><div class="detail-label">S/N:</div><div class="detail-value">${data.sn}</div></div>`;
+        }
+
+        // Always show Remark for all types, as requested
+        content += `<div class="detail-item"><div class="detail-label">หมายเหตุ:</div><div class="detail-value">${data.remark || '-'}</div></div>`;
+
+        body.innerHTML = content;
+        modal.style.display = "block";
     }
 }
 
