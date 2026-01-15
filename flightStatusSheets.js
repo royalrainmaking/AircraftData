@@ -580,6 +580,64 @@ class FlightStatusService {
         return 'aircraft';
     }
 
+    async fetchHistoricalData(targetDate) {
+        try {
+            const aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
+            const response = await fetch(aircraftURL, { cache: 'no-store' });
+            if (!response.ok) return null;
+
+            const text = await response.text();
+            const startIdx = text.indexOf('{');
+            const endIdx = text.lastIndexOf('}');
+            if (startIdx === -1 || endIdx === -1) return null;
+
+            const json = JSON.parse(text.substring(startIdx, endIdx + 1));
+            const rows = json.table.rows;
+            if (!rows || rows.length === 0) return null;
+
+            // Target date in timestamp for comparison
+            const targetTime = new Date(targetDate).getTime();
+            let bestRow = null;
+            let bestDate = null;
+
+            // Find the first row that is on or after the target date
+            // The sheet is assumed to be sorted by date (oldest first)
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row.c || !row.c[0]?.v) continue;
+                
+                const rowDateStr = this.normalizeDate(row.c[0].v);
+                if (!rowDateStr) continue;
+                
+                const rowTime = new Date(rowDateStr).getTime();
+
+                if (!bestRow) {
+                    bestRow = row; // Default to the very first (oldest) row
+                    bestDate = rowDateStr;
+                }
+
+                if (rowTime >= targetTime) {
+                    bestRow = row;
+                    bestDate = rowDateStr;
+                    break; // Found the first row that matches or is after the target
+                }
+            }
+
+            if (bestRow) {
+                // Return data for that specific row
+                const data = this.parseFlightData([bestRow], bestDate);
+                return {
+                    data: data,
+                    date: bestDate
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching historical data:', error);
+            return null;
+        }
+    }
+
     cacheData(data, date = null) {
         try {
             const cacheObj = JSON.parse(localStorage.getItem(this.cacheKey) || '{}');
