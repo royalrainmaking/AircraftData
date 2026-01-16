@@ -148,6 +148,17 @@
             return `\n<div class="data-item ${className}">${itemsHtml}</div>`;
         }
 
+        function createRemarkItem(label, value){
+            if(!value || String(value).trim() === '' || value === '-') return '';
+            
+            return `\n<div class="data-item data-item-full remark-item">\n  <div class="data-label">${label}</div>\n  <div class="data-value remark-text">${value}</div>\n</div>`;
+        }
+
+        function createTableRow(label, value) {
+            if(!value || String(value).trim() === '' || value === '-') return '';
+            return `<tr><th>${label}</th><td>${value}</td></tr>`;
+        }
+
         // ฟังก์ชันค้นหา
         function searchRecords(query) {
             if (!query.trim()) {
@@ -271,23 +282,20 @@
                     <div class="component-section">
                         <div class="component-title propeller">ข้อมูลใบพัด</div>
                         <div class="data-grid">
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[0], value: rec[0] }, // Model
-                                { label: COLUMN_LABELS[1], value: rec[1] }  // S/N
-                            ])}
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[2], value: rec[2] }, // ครบรอบOverhaul
-                                { label: COLUMN_LABELS[6], value: rec[6] }  // Overhaul (ครั้ง)
-                            ])}
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[3], value: rec[3] }, // วันที่ติดตั้ง
-                                { label: COLUMN_LABELS[4], value: rec[4] }  // ครบกำหนดซ่อม
-                            ])}
-                            ${createItem(COLUMN_LABELS[5], rec[5])}
+                            <table class="data-table">
+                                ${createTableRow(COLUMN_LABELS[0], rec[0])}
+                                ${createTableRow(COLUMN_LABELS[1], rec[1])}
+                                ${createTableRow(COLUMN_LABELS[6], rec[6])}
+                            </table>
+                            <table class="data-table">
+                                ${createTableRow(COLUMN_LABELS[2], rec[2])}
+                                ${createTableRow(COLUMN_LABELS[3], rec[3])}
+                                ${createTableRow(COLUMN_LABELS[4], rec[4])}
+                            </table>
                         </div>
+                        ${createRemarkItem(COLUMN_LABELS[5], rec[5])}
                     </div>
                 </div>
-                
             </div>`;
         }
 

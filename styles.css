@@ -265,7 +265,7 @@ header h2 {
 /* Aircraft List - iOS Grid Layout */
 .aircraft-list {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
     gap: 15px;
     margin-top: 15px;
 }
@@ -278,10 +278,18 @@ header h2 {
     border: 1px solid rgba(255, 255, 255, 0.5);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* Changed to row for horizontal layout */
     overflow: hidden;
     cursor: pointer;
     position: relative;
+    min-height: 180px;
+}
+
+@media (max-width: 768px) {
+    .aircraft-row {
+        flex-direction: column;
+        min-height: auto;
+    }
 }
 
 .aircraft-row::before {
@@ -322,18 +330,39 @@ header h2 {
 }
 
 .aircraft-header {
-    background: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
-    background-size: cover;
-    background-position: center;
+    background-color: transparent;
+    background-size: contain;
+    background-position: left center;
     background-repeat: no-repeat;
     color: white;
-    padding: 15px;
+    padding: 0;
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: stretch;
     position: relative;
     overflow: hidden;
-    min-height: 70px;
+    width: 280px;
+    flex-shrink: 0;
+    border-radius: 14px 0 0 14px;
+}
+
+.aircraft-info {
+    flex: 1;
+    padding: 20px;
+    background: linear-gradient(to right, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    z-index: 2;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+@media (max-width: 768px) {
+    .aircraft-header {
+        width: 100%;
+        min-height: 80px;
+        border-radius: 14px 14px 0 0;
+        padding: 0;
+    }
 }
 
 .aircraft-header::after {
@@ -387,28 +416,95 @@ header h2 {
 
 .aircraft-progress-bars {
     flex: 1;
-    padding: 8px;
+    padding: 10px 15px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     background: rgba(248, 249, 250, 0.3);
-    border-radius: 0 0 14px 14px;
+    border-radius: 0 14px 14px 0;
+    overflow-x: auto;
+    min-width: 0; /* Allow flex to shrink below content width */
+}
+
+.progress-table-header {
+    display: grid;
+    grid-template-columns: 120px 1fr 85px 1.8fr;
+    align-items: center;
+    gap: 15px;
+    padding: 6px 12px;
+    font-size: 0.65em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #8e8e93;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    margin-bottom: 2px;
+    min-width: 600px; /* Ensure table structure is maintained */
+}
+
+.header-col {
+    display: flex;
+    align-items: center;
+}
+
+.header-col.col-percent {
+    justify-content: flex-end;
+}
+
+/* Ensure component sections in engine.html/propeller.html span full width in the grid */
+.aircraft-progress-bars > .component-section {
+    grid-column: span 1;
+}
+
+@media (max-width: 768px) {
+    .aircraft-progress-bars {
+        border-radius: 0 0 14px 14px;
+        padding: 12px;
+        gap: 6px;
+        overflow-x: hidden; /* No more horizontal scroll on mobile */
+    }
+
+    .progress-table-header {
+        display: none; /* Hide table headers on mobile */
+    }
+
+    .compact-progress-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas: 
+            "comp percent"
+            "status status"
+            "details details";
+        gap: 8px;
+        padding: 12px;
+        min-width: 0;
+    }
+
+    .col-comp {
+        grid-area: comp;
+        position: static;
+        padding-right: 0;
+        box-shadow: none;
+        background: transparent !important;
+    }
+
+    .col-status {
+        grid-area: status;
+    }
+
+    .col-percent {
+        grid-area: percent;
+    }
+
+    .col-details {
+        grid-area: details;
+        padding-top: 4px;
+        border-top: 1px solid rgba(0,0,0,0.03);
+    }
 }
 
 .click-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    color: #8E8E93;
-    font-size: 0.75em;
-    font-weight: 500;
-    background: rgba(248, 249, 250, 0.6);
-    border-radius: 0 0 14px 14px;
-    letter-spacing: 0.2px;
-    width: fit-content;
-    margin: 0 auto;
-    max-width: 300px;
+    display: none; /* Hidden as requested */
 }
 
 .click-hint span {
@@ -435,14 +531,14 @@ header h2 {
 
 .component-title {
     font-family: 'Roboto Condensed', sans-serif;
-    font-size: 0.9em;
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 8px;
-    padding: 5px 8px;
+    font-size: 0.8em;
+    font-weight: 800;
+    color: #212529;
+    margin-bottom: 4px;
+    padding: 3px 8px;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 5px;
-    border-left: 3px solid;
+    border-radius: 4px;
+    border-left: 4px solid;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -464,7 +560,7 @@ header h2 {
 .data-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 8px;
+    gap: 4px;
     align-items: start;
 }
 
@@ -525,28 +621,28 @@ header h2 {
 
 /* Special styling for REMARK item */
 .remark-item {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
     border: 1px solid #dee2e6;
-    border-left: 4px solid #6c757d;
-    margin-top: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-left: 5px solid #495057;
+    margin-top: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
 }
 
 .remark-item:hover {
     background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-    border-left-color: #495057;
+    border-left-color: #212529;
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .remark-item .data-label {
-    color: #6c757d;
-    font-weight: 700;
-    margin-bottom: 6px;
+    color: #343a40;
+    font-weight: 800;
+    margin-bottom: 4px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: 0.65em;
+    font-size: 0.6em;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -556,18 +652,18 @@ header h2 {
 
     font-family: 'Material Symbols Outlined';
     font-size: 1.2em;
-    opacity: 0.7;
+    opacity: 0.9;
 }
 
 .remark-text {
     font-family: 'B612', sans-serif;
-    font-size: 0.85em;
-    line-height: 1.5;
-    color: #495057;
+    font-size: 0.8em;
+    line-height: 1.4;
+    color: #000;
     white-space: pre-wrap;
     word-break: break-word;
-    padding: 4px 0;
-    font-weight: 400;
+    padding: 2px 0;
+    font-weight: 600;
     letter-spacing: 0.01em;
 }
 
@@ -607,6 +703,49 @@ header h2 {
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.2;
+}
+
+/* Data Table Layout */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2px;
+    background: #fff;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+}
+
+.data-table th, .data-table td {
+    padding: 3px 8px;
+    text-align: left;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.data-table th {
+    background: #f8f9fa;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.65em;
+    font-weight: 800;
+    color: #343a40;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    width: 38%;
+}
+
+.data-table td {
+    font-family: 'B612', sans-serif;
+    font-size: 0.8em;
+    color: #000;
+    font-weight: 700;
+}
+
+.data-table tr:last-child th, .data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover {
+    background: #e9ecef;
 }
 
 .combined-item .data-value {
@@ -840,13 +979,13 @@ header h2 {
 /* Responsive adjustments for sidebar and grid */
 @media (max-width: 768px) {
     .aircraft-list {
-        grid-template-columns: 1fr; /* 1 column on mobile */
+        grid-template-columns: 1fr;
     }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
     .aircraft-list {
-        grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1039,45 +1178,149 @@ header h2 {
 
 /* iOS-style Compact Progress Bars for Main Page */
 .compact-progress-item {
-    display: flex;
-    flex-direction: column; /* ซ้อนกันคนละบรรทัด */
-    align-items: flex-start; /* จัดชิดซ้ายให้สวยงาม */
-    gap: 3px;
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
+    display: grid;
+    grid-template-columns: 120px 1fr 85px 1.8fr;
+    align-items: center;
+    gap: 15px;
+    padding: 6px 12px;
+    background: #fff;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border: 1px solid #e5e5ea;
     position: relative;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+    min-width: 600px; /* Match header min-width */
 }
 
-.compact-progress-item .progress-title {
+.compact-progress-item:hover {
+    background: #f9f9fb;
+    border-color: #d1d1d6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.comp-col {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    overflow: hidden;
+}
+
+.col-comp {
+    font-weight: 700;
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 5;
+    padding-right: 15px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.03);
+}
+
+.compact-progress-item.expired .col-comp {
+    background: #fffcfc;
+}
+
+.compact-progress-item:hover .col-comp {
+    background: #f9f9fb;
+}
+
+.progress-table-header .col-comp {
+    background: #f8f9fa;
+    z-index: 6;
+}
+
+.col-status {
     width: 100%;
 }
 
-.compact-progress-item .progress-title .title-text {
-    font-weight: 600;
-    color: #1D1D1F;
+.col-percent {
+    justify-content: flex-end;
 }
 
-.compact-progress-item .progress-title .title-info {
-    font-size: 0.8em;
-    color: #666;
-    font-weight: 500;
+.col-details {
+    gap: 10px;
+    font-size: 0.72em;
+    color: #1d1d1f;
+    font-weight: 700;
+}
+
+.title-text {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #1d1d1f;
+}
+
+.percentage-val {
+    font-size: 0.85em;
+    font-weight: 700;
+    font-family: 'Source Code Pro', monospace;
+}
+
+.slim-progress-bar {
+    height: 6px;
+    background: #f2f2f7;
+    border-radius: 3px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.slim-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s cubic-bezier(0.1, 0.7, 0.1, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.slim-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+.info-text {
+    font-size: 1em;
+    color: #1d1d1f;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.due-text {
+    font-size: 1em;
+    color: #000;
+    font-weight: 800;
     white-space: nowrap;
 }
 
-.compact-progress-item .component-details {
+.percentage-val.status-normal { color: #2fb344; background: none !important; }
+.percentage-val.status-warning { color: #ff9500; background: none !important; }
+.percentage-val.status-danger { color: #ff3b30; background: none !important; }
+
+.status-normal { background-color: #34c759; }
+.status-warning { background-color: #ff9500; }
+.status-danger { background-color: #ff3b30; }
+
+.slim-progress-bar.expired {
+    position: relative;
+}
+
+.expired-label {
     font-size: 0.75em;
-    color: #888;
-    font-weight: 400;
-    margin-top: 2px;
-    line-height: 1.2;
+    font-weight: 800;
+    color: #ff3b30;
+    letter-spacing: 0.5px;
+}
+
+.compact-progress-item.expired {
+    border-color: rgba(255, 59, 48, 0.3);
+    background: #fffcfc;
 }
 
 .compact-progress-item::before {
@@ -1086,80 +1329,19 @@ header h2 {
     left: 0;
     top: 0;
     bottom: 0;
-    width: 3px;
+    width: 4px;
     border-radius: 8px 0 0 8px;
-    transition: width 0.3s ease;
 }
 
-.compact-progress-item:hover {
-    transform: scale(1.02);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
-
-.compact-progress-item:hover::before {
-    width: 6px;
-}
-
-.compact-progress-item.aircraft::before { 
-    background: linear-gradient(135deg, #34C759, #30D158);
-}
-.compact-progress-item.engine::before { 
-    background: linear-gradient(135deg, #FF3B30, #FF6B6B);
-}
-.compact-progress-item.propeller::before { 
-    background: linear-gradient(135deg, #FF9500, #FFAB00);
-}
+.compact-progress-item.aircraft::before { background: #34c759; }
+.compact-progress-item.engine::before { background: #ff3b30; }
+.compact-progress-item.propeller::before { background: #ff9500; }
 
 .progress-title {
     font-weight: 600;
     color: #1D1D1F;
     font-size: 0.9em;
     letter-spacing: -0.2px;
-}
-
-.progress-title:not(.compact-progress-item .progress-title) {
-    min-width: 70px;
-    white-space: nowrap;
-}
-
-.compact-progress-container {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-}
-
-/* ให้แถบอยู่คนละบรรทัดและมีความกว้างคงที่ */
-.compact-progress-container {
-    margin-top: 1px; /* ระยะห่างจาก caption */
-}
-
-.compact-progress-bar {
-    height: 6px;
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 3px;
-    overflow: hidden;
-    position: relative;
-    width: 200px; /* ความกว้างคงที่ */
-}
-
-.compact-progress-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    position: relative;
-    overflow: hidden;
-}
-
-.compact-progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    animation: progress-shimmer 2s ease-in-out infinite;
 }
 
 @keyframes progress-shimmer {
@@ -1430,13 +1612,9 @@ header h2 {
         border-radius: 16px;
     }
     
-    .aircraft-header {
-        padding: 16px;
-        gap: 12px;
-    }
-    
     .aircraft-info {
         text-align: left;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 100%);
     }
     
     .aircraft-info h4 {
@@ -1611,12 +1789,6 @@ header h2 {
     .compact-percentage {
         font-size: 0.75em;
         min-width: 25px;
-    }
-    
-    .click-hint {
-        padding: 10px;
-        font-size: 0.8em;
-        border-radius: 0 0 14px 14px;
     }
     
     .modal-content {
@@ -1822,10 +1994,8 @@ header h2 {
     width: 100px;
     height: 100px;
     border-radius: 8px;
-    object-fit: contain;
+    object-fit: cover;
     border: 2px solid #e9ecef;
-    background: #f8f9fa;
-    padding: 5px;
     box-sizing: border-box;
 }
 

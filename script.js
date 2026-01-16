@@ -156,7 +156,7 @@ class AircraftDataManager {
         
         return `
             <div class="aircraft-row" data-aircraft-id="${aircraft.aircraftId}" onclick="window.aircraftManager.showDetailModal('${aircraft.aircraftId}')">
-                <div class="aircraft-header" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2)), url('${aircraftImage}');">
+                <div class="aircraft-header" style="background-image: url('${aircraftImage}');">
                     <div class="aircraft-info">
                         <h4>อากาศยาน ${aircraft.aircraftId}</h4>
                         <div class="flight-hours">FH: ${flightHours}</div>
@@ -589,49 +589,39 @@ class AircraftDataManager {
 
     // Create progress bar section for main page display
     createProgressBarSection(aircraft) {
-        console.log('=== createProgressBarSection called ===');
-        console.log('Aircraft ID:', aircraft.aircraftId);
-        const progressBars = [];
+        let html = `
+            <div class="progress-table-header">
+                <div class="header-col col-comp">Component</div>
+                <div class="header-col col-status">Progress Status</div>
+                <div class="header-col col-percent">%</div>
+                <div class="header-col col-details">Details</div>
+            </div>
+        `;
 
-        // Aircraft progress bar - calculate from available data
+        // Aircraft section
         if (aircraft.components.aircraft) {
-            console.log('Processing aircraft component...');
             const aircraftProgress = this.calculateProgressFromData(aircraft.components.aircraft);
-            console.log('Aircraft progress result:', aircraftProgress);
             if (aircraftProgress.hasData) {
                 const statusText = this.checkExpiredStatus(aircraft.components.aircraft);
-                console.log('Creating aircraft progress bar with percentage:', aircraftProgress.percentage);
-                progressBars.push(this.createCompactProgressBar('A/C', aircraftProgress.percentage, 'aircraft', statusText, aircraft.components.aircraft));
-            } else {
-                console.log('Aircraft progress has no data');
+                html += this.createCompactProgressBar('A/C', aircraftProgress.percentage, 'aircraft', statusText, aircraft.components.aircraft);
             }
-        } else {
-            console.log('No aircraft component found');
         }
 
-        // Engine progress bars
+        // Engines section
         if (aircraft.components.engines && aircraft.components.engines.length > 0) {
-            console.log('Processing engines, count:', aircraft.components.engines.length);
             aircraft.components.engines.forEach((engine, index) => {
                 if (engine) {
-                    console.log('Processing engine', index + 1, 'type:', engine.type);
                     const engineProgress = this.calculateProgressFromData(engine);
-                    console.log('Engine progress result:', engineProgress);
                     if (engineProgress.hasData) {
                         const statusText = this.checkExpiredStatus(engine);
                         const title = engine.type || `Engine ${index + 1}`;
-                        console.log('Creating engine progress bar with percentage:', engineProgress.percentage);
-                        progressBars.push(this.createCompactProgressBar(title, engineProgress.percentage, 'engine', statusText, engine));
-                    } else {
-                        console.log('Engine progress has no data');
+                        html += this.createCompactProgressBar(title, engineProgress.percentage, 'engine', statusText, engine);
                     }
                 }
             });
-        } else {
-            console.log('No engines found');
         }
 
-        // Propeller progress bars
+        // Propellers section
         if (aircraft.components.propellers && aircraft.components.propellers.length > 0) {
             aircraft.components.propellers.forEach((propeller, index) => {
                 if (propeller) {
@@ -639,15 +629,13 @@ class AircraftDataManager {
                     if (propellerProgress.hasData) {
                         const statusText = this.checkExpiredStatus(propeller);
                         const title = propeller.type || `Propeller ${index + 1}`;
-                        progressBars.push(this.createCompactProgressBar(title, propellerProgress.percentage, 'propeller', statusText, propeller));
+                        html += this.createCompactProgressBar(title, propellerProgress.percentage, 'propeller', statusText, propeller);
                     }
                 }
             });
         }
 
-        console.log('Total progress bars created:', progressBars.length);
-        console.log('Progress bars HTML:', progressBars.join(''));
-        return progressBars.length > 0 ? progressBars.join('') : '<div class="no-progress">ไม่มีข้อมูล Progress</div>';
+        return html || '<div class="no-progress">ไม่มีข้อมูล Progress</div>';
     }
 
     // Check if component is expired
@@ -670,48 +658,52 @@ class AircraftDataManager {
     // Create compact progress bar for main page
     createCompactProgressBar(title, value, type, statusText, component = null) {
         const repairDueText = component && component.repairDue ? String(component.repairDue).trim() : '';
-        
-        // Get model and serial number info
         const modelInfo = component && component.model ? component.model : '';
         const serialInfo = component && component.serialNumber ? component.serialNumber : '';
-        const additionalInfo = modelInfo || serialInfo ? `${modelInfo ? modelInfo : ''} ${serialInfo ? `S/N: ${serialInfo}` : ''}`.trim() : '';
+        const additionalInfo = modelInfo || serialInfo ? `<span class="info-text">${modelInfo}${serialInfo ? ` S/N: ${serialInfo}` : ''}</span>` : '';
+
+        const percentage = typeof value === 'number' ? value : this.parseProcessingBar(value);
+        const statusClass = this.getProgressStatusClass(percentage);
+        const hasWarning = percentage >= 90;
 
         if (statusText === 'expired') {
             return `
-                <div class="compact-progress-item ${type}">
-                    <div class="progress-title">
+                <div class="compact-progress-item ${type} expired">
+                    <div class="comp-col col-comp">
                         <span class="title-text">${title}</span>
-                        ${this.hasValue(repairDueText) ? `<span class="title-info">ครบกำหนดซ่อม: ${repairDueText}</span>` : ''}
                     </div>
-                    ${this.hasValue(additionalInfo) ? `<div class="component-details">${additionalInfo}</div>` : ''}
-                    <div class="expired-status">
-                        Expired
-                        <div class="progress-notification-badge expired-badge">!</div>
+                    <div class="comp-col col-status">
+                        <div class="slim-progress-bar expired">
+                            <div class="slim-progress-fill status-danger" style="width: 100%; animation: none;"></div>
+                        </div>
+                    </div>
+                    <div class="comp-col col-percent">
+                        <span class="percentage-val status-danger">EXPIRED</span>
+                    </div>
+                    <div class="comp-col col-details">
+                        ${additionalInfo}
+                        ${this.hasValue(repairDueText) ? `<span class="due-text">Due: ${repairDueText}</span>` : ''}
                     </div>
                 </div>
             `;
         }
 
-        // Value can be either a percentage number or a processingBar string
-        const percentage = typeof value === 'number' ? value : this.parseProcessingBar(value);
-        const statusClass = this.getProgressStatusClass(percentage);
-        const hasWarning = percentage >= 90;
-        
         return `
             <div class="compact-progress-item ${type}">
-                <div class="progress-title">
+                <div class="comp-col col-comp">
                     <span class="title-text">${title}</span>
-                    ${this.hasValue(repairDueText) ? `<span class="title-info">ครบกำหนดซ่อม: ${repairDueText}</span>` : ''}
                 </div>
-                ${this.hasValue(additionalInfo) ? `<div class="component-details">${additionalInfo}</div>` : ''}
-                <div class="compact-progress-container">
-                    <div class="compact-progress-bar">
-                        <div class="compact-progress-fill ${statusClass}" style="width: ${percentage}%"></div>
+                <div class="comp-col col-status">
+                    <div class="slim-progress-bar">
+                        <div class="slim-progress-fill ${statusClass}" style="width: ${percentage}%"></div>
                     </div>
-                    <div class="compact-percentage">
-                        ${percentage}%
-                        ${hasWarning ? '<div class="progress-notification-badge">!</div>' : ''}
-                    </div>
+                </div>
+                <div class="comp-col col-percent">
+                    <span class="percentage-val ${statusClass}">${percentage}% ${hasWarning ? '!' : ''}</span>
+                </div>
+                <div class="comp-col col-details">
+                    ${additionalInfo}
+                    ${this.hasValue(repairDueText) ? `<span class="due-text">Due: ${repairDueText}</span>` : ''}
                 </div>
             </div>
         `;

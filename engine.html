@@ -147,6 +147,11 @@
             return `\n<div class="data-item data-item-full remark-item">\n  <div class="data-label">${label}</div>\n  <div class="data-value remark-text">${value}</div>\n</div>`;
         }
 
+        function createTableRow(label, value) {
+            if(!value || String(value).trim() === '' || value === '-') return '';
+            return `<tr><th>${label}</th><td>${value}</td></tr>`;
+        }
+
         function createCombinedItem(items) {
             // กรองเฉพาะ items ที่มีทั้ง label และ value
             const validItems = items.filter(item => 
@@ -295,29 +300,24 @@
                     <div class="component-section">
                         <div class="component-title engine">ข้อมูลเครื่องยนต์</div>
                         <div class="data-grid">
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[0], value: rec[0] }, // Model
-                                { label: COLUMN_LABELS[1], value: rec[1] }  // S/N
-                            ])}
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[3], value: rec[3] }, // TSN(I)
-                                { label: COLUMN_LABELS[4], value: rec[4] }  // TSO(I)
-                            ])}
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[5], value: rec[5] }, // A/C(I)
-                                { label: COLUMN_LABELS[2], value: rec[2] }  // Overhaul Due
-                            ])}
-                            ${createItem(COLUMN_LABELS[8], rec[8])} <!-- OH COUNT -->
-                            ${createCombinedItem([
-                                { label: COLUMN_LABELS[6], value: rec[6] }, // INSTALL IN
-                                { label: COLUMN_LABELS[9], value: rec[9] }  // Install Date
-                            ])}
-                            ${createItem(COLUMN_LABELS[7], rec[7])} <!-- REMOVED -->
-                            ${createRemarkItem(COLUMN_LABELS[10], rec[10])} <!-- REMARK full width -->
+                            <table class="data-table">
+                                ${createTableRow(COLUMN_LABELS[0], rec[0])}
+                                ${createTableRow(COLUMN_LABELS[1], rec[1])}
+                                ${createTableRow(COLUMN_LABELS[8], rec[8])}
+                                ${createTableRow(COLUMN_LABELS[3], rec[3])}
+                                ${createTableRow(COLUMN_LABELS[4], rec[4])}
+                            </table>
+                            <table class="data-table">
+                                ${createTableRow(COLUMN_LABELS[5], rec[5])}
+                                ${createTableRow(COLUMN_LABELS[2], rec[2])}
+                                ${createTableRow(COLUMN_LABELS[6], rec[6])}
+                                ${createTableRow(COLUMN_LABELS[9], rec[9])}
+                                ${createTableRow(COLUMN_LABELS[7], rec[7])}
+                            </table>
                         </div>
+                        ${createRemarkItem(COLUMN_LABELS[10], rec[10])}
                     </div>
                 </div>
-                
             </div>`;
         }
 
