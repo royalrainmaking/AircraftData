@@ -218,6 +218,75 @@ class FlightStatusService {
         }
     }
 
+    async fetchAllHistoryData() {
+        try {
+            console.log('📡 กำลังโหลดข้อมูลประวัติทั้งหมด...');
+            let aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
+
+            const response = await fetch(aircraftURL, { cache: 'no-store' });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const text = await response.text();
+            let json;
+            const startIdx = text.indexOf('{');
+            const endIdx = text.lastIndexOf('}');
+            
+            if (startIdx !== -1 && endIdx !== -1) {
+                const jsonStr = text.substring(startIdx, endIdx + 1);
+                json = JSON.parse(jsonStr);
+            } else {
+                throw new Error('Cannot find JSON in response');
+            }
+            
+            if (!json || !json.table || !json.table.rows) {
+                throw new Error("Invalid JSON structure");
+            }
+
+            const rows = json.table.rows;
+            const allHistory = [];
+            
+            for (const row of rows) {
+                if (!row.c || row.c.length < 2) continue;
+                
+                const dateValue = row.c[0]?.v || '';
+                const jsonValue = row.c[1]?.v || '';
+                
+                if (!jsonValue) continue;
+
+                const normalizedDate = this.normalizeDate(dateValue);
+                
+                try {
+                    const jsonData = JSON.parse(jsonValue);
+                    const dailyAircraft = [];
+                    
+                    if (jsonData.ข้อมูลSheet1) {
+                        this.processSheet1Data(jsonData.ข้อมูลSheet1, dailyAircraft);
+                    }
+                    if (jsonData.ข้อมูลSheet2) {
+                        this.processSheet2Data(jsonData.ข้อมูลSheet2, dailyAircraft);
+                    }
+                    
+                    dailyAircraft.forEach(ac => {
+                        ac.date = normalizedDate;
+                        allHistory.push(ac);
+                    });
+                } catch (e) {
+                    console.error(`Error parsing JSON for date ${dateValue}:`, e.message);
+                }
+            }
+            
+            console.log(`✅ โหลดข้อมูลประวัติสำเร็จ: ${allHistory.length} รายการ`);
+            return allHistory;
+
+        } catch (error) {
+            console.error('Error fetching all history data:', error.message);
+            return [];
+        }
+    }
+
     parseFlightData(rows, selectedDate = null) {
         const aircraft = [];
         
