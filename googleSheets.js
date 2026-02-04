@@ -1,7 +1,7 @@
 class GoogleSheetsService {
-    constructor() {
+    constructor(spreadsheetId = null) {
         // Google Sheets ID from the URL
-        this.spreadsheetId = '1RqMnEMxt4m7C2e8QiVQHDiycyA1KBLjJ9PMMb-nZiSU';
+        this.spreadsheetId = spreadsheetId || '1RqMnEMxt4m7C2e8QiVQHDiycyA1KBLjJ9PMMb-nZiSU';
     }
 
     // Get CSV data from a specific sheet
