@@ -2176,4 +2176,48 @@ header h2 {
     .repair-due-compact {
         font-size: 1em;
     }
-}
+}/* Custom Components Table for Aircraft 2321 */ 
+ 
+.helicopter-table th { 
+.text-center { 
+  
+/* AOG Helicopter Styling */  
+.aog-helicopter .aircraft-progress-bars {  
+    position: relative;  
+    min-height: 100px;  
+    display: flex;  
+    align-items: center;  
+    justify-content: center;  
+    background: #f8f9fa;  
+    border: 1px dashed #dee2e6;  
+    border-radius: 8px;  
+    margin: 10px 0;  
+}  
+  
+.aog-overlay {  
+    text-align: center;  
+    padding: 20px;  
+    width: 100%%;  
+}  
+  
+.aog-text {  
+    font-size: 2.5rem;  
+    font-weight: 900;  
+    color: #dc3545;  
+    letter-spacing: 5px;  
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);  
+    margin-bottom: 5px;  
+    animation: pulse-aog 2s ease-in-out infinite;  
+}  
+  
+.aog-subtext {  
+    font-size: 0.9rem;  
+    color: #6c757d;  
+    font-weight: 600;  
+    text-transform: uppercase;  
+}  
+  
+@keyframes pulse-aog {  
+    0%%, 100%% { transform: scale(1); opacity: 1; }  
+    50%% { transform: scale(1.05); opacity: 0.8; }  
+} 

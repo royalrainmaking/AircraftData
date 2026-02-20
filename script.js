@@ -153,9 +153,10 @@ class AircraftDataManager {
     createAircraftCard(aircraft) {
         const aircraftImage = this.getAircraftImage(aircraft.components.aircraft?.model);
         const flightHours = aircraft.flightHours || 'ไม่ระบุ';
+        const isAOG = this.isAOGHelicopter(aircraft);
         
         return `
-            <div class="aircraft-row" data-aircraft-id="${aircraft.aircraftId}" onclick="window.aircraftManager.showDetailModal('${aircraft.aircraftId}')">
+            <div class="aircraft-row ${isAOG ? 'aog-helicopter' : ''}" data-aircraft-id="${aircraft.aircraftId}" onclick="window.aircraftManager.showDetailModal('${aircraft.aircraftId}')">
                 <div class="aircraft-header" style="background-image: url('${aircraftImage}');">
                     <div class="aircraft-info">
                         <h4>อากาศยาน ${aircraft.aircraftId}</h4>
@@ -170,6 +171,28 @@ class AircraftDataManager {
                 </div>
             </div>
         `;
+    }
+
+    // Helper function to identify if aircraft is a helicopter
+    isHelicopter(aircraft) {
+        if (!aircraft || !aircraft.components || !aircraft.components.aircraft) return false;
+        const modelUpper = (aircraft.components.aircraft.model || '').toUpperCase();
+        const idStr = (aircraft.aircraftId || '').toString();
+        return modelUpper.includes('BELL') || 
+               modelUpper.includes('AS350') || 
+               modelUpper.includes('EC130') || 
+               modelUpper.includes('H130') || 
+               idStr === '2321' || 
+               idStr === '2322' ||
+               idStr === '2311';
+    }
+
+    // Helper function to identify helicopters that should be shown as AOG
+    isAOGHelicopter(aircraft) {
+        if (!this.isHelicopter(aircraft)) return false;
+        const idStr = (aircraft.aircraftId || '').toString();
+        // Exception for the 3 specific helicopters
+        return !(idStr === '2321' || idStr === '2322' || idStr === '2311');
     }
 
     getAircraftEmoji(model) {
@@ -311,6 +334,12 @@ class AircraftDataManager {
 
     getFilteredDataItems(component) {
         const hasProcessing = this.hasValue(component.processingBar);
+        const isHelicopter = component.type === 'Helicopter' || (component.model && (
+            component.model.toUpperCase().includes('BELL') || 
+            component.model.toUpperCase().includes('AS350') || 
+            component.model.toUpperCase().includes('EC130') || 
+            component.model.toUpperCase().includes('H130')
+        ));
 
         const items = [];
         
@@ -320,8 +349,8 @@ class AircraftDataManager {
             { label: 'S/N', value: component.serialNumber }
         ]));
 
-        // Processing Bar (ถ้ามี)
-        if (hasProcessing) {
+        // Processing Bar (ถ้ามี) - ซ่อนสำหรับเฮลิคอปเตอร์ตามคำขอ
+        if (hasProcessing && !isHelicopter) {
             items.push(this.createProcessingBarItem('Processing', component.processingBar, 'full', component.repairDue));
         }
 
@@ -589,6 +618,19 @@ class AircraftDataManager {
 
     // Create progress bar section for main page display
     createProgressBarSection(aircraft) {
+        // Check if it's a helicopter to hide Propellers section
+        const isHelicopter = this.isHelicopter(aircraft);
+
+        // If it's an AOG helicopter, return a special AOG display
+        if (this.isAOGHelicopter(aircraft)) {
+            return `
+                <div class="aog-overlay">
+                    <div class="aog-text">AOG</div>
+                    <div class="aog-subtext">Aircraft On Ground - Waiting for data</div>
+                </div>
+            `;
+        }
+
         let html = `
             <div class="progress-table-header">
                 <div class="header-col col-comp">Component</div>
@@ -622,7 +664,7 @@ class AircraftDataManager {
         }
 
         // Propellers section
-        if (aircraft.components.propellers && aircraft.components.propellers.length > 0) {
+        if (!isHelicopter && aircraft.components.propellers && aircraft.components.propellers.length > 0) {
             aircraft.components.propellers.forEach((propeller, index) => {
                 if (propeller) {
                     const propellerProgress = this.calculateProgressFromData(propeller);
@@ -783,6 +825,10 @@ class AircraftDataManager {
         const aircraftImage = this.getAircraftImage(aircraft.components.aircraft?.model);
         const flightHours = aircraft.flightHours || 'ไม่ระบุ';
         
+        // Check if it's a helicopter to hide Propellers section
+        const modelUpper = (aircraft.components.aircraft?.model || '').toUpperCase();
+        const isHelicopter = modelUpper.includes('BELL') || modelUpper.includes('AS350') || modelUpper.includes('EC130') || modelUpper.includes('H130') || aircraft.aircraftId === '2321' || aircraft.aircraftId === '2322';
+
         return `
             <div class="detailed-aircraft">
                 <div class="detailed-header">
@@ -793,9 +839,71 @@ class AircraftDataManager {
                     </div>
                 </div>
                 <div class="detailed-components">
-                    ${this.createComponentSection('A/C (Aircraft)', aircraft.components.aircraft, 'aircraft')}
-                    ${this.createMultipleComponentsSection('Engines', aircraft.components.engines || [], 'engine')}
-                    ${this.createMultipleComponentsSection('Propellers', aircraft.components.propellers || [], 'propeller')}
+                    <div class="airframe-group">
+                        ${this.createComponentSection('A/C (Airframe)', aircraft.components.aircraft, 'aircraft')}
+                        ${aircraft.customComponents ? this.createCustomComponentsSection(aircraft.customComponents, 'Airframe') : ''}
+                    </div>
+                    <div class="engine-group">
+                        ${!isHelicopter ? this.createMultipleComponentsSection('Engines', aircraft.components.engines || [], 'engine') : ''}
+                        ${aircraft.customComponents ? this.createCustomComponentsSection(aircraft.customComponents, 'Engine') : ''}
+                    </div>
+                    ${!isHelicopter ? this.createMultipleComponentsSection('Propellers', aircraft.components.propellers || [], 'propeller') : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    createCustomComponentsSection(components, sectionFilter = 'Airframe') {
+        if (!components || components.length === 0) return '';
+
+        const filteredComponents = components.filter(c => (c.section || 'Airframe') === sectionFilter);
+        if (filteredComponents.length === 0) return '';
+
+        const isEngine = sectionFilter.toLowerCase() === 'engine';
+        const title = isEngine ? 'รายการอุปกรณ์เครื่องยนต์ (ENGINE COMPONENTS)' : 'รายการอุปกรณ์เฮลิคอปเตอร์ (AIRFRAME COMPONENTS)';
+        const icon = isEngine ? 'settings' : 'helicopter';
+        const sectionClass = isEngine ? 'engine' : 'airframe';
+
+        const rows = filteredComponents.map(comp => {
+            const percentage = comp.percentage || 0;
+            let statusClass = 'status-normal';
+            if (percentage >= 90) statusClass = 'status-danger';
+            else if (percentage >= 70) statusClass = 'status-warning';
+
+            // Combined sub-info (P/N, TSN, TSO) in one line
+            const subInfo = [];
+            if (comp.partNumber) subInfo.push(comp.partNumber);
+            if (comp.tsn) subInfo.push(`TSN: ${comp.tsn}`);
+            if (comp.tso) subInfo.push(`TSO: ${comp.tso}`);
+
+            return `
+                <div class="heli-item">
+                    <div class="heli-info">
+                        <div class="heli-part-name">${comp.item}</div>
+                        <div class="heli-part-number">${subInfo.join(' | ')}</div>
+                    </div>
+                    <div class="heli-remain-container">
+                        <span class="heli-label">REMAIN</span>
+                        <span class="heli-value numeric">${comp.remaining}</span>
+                    </div>
+                    <div class="heli-progress-container">
+                        <div class="heli-progress-bar">
+                            <div class="heli-progress-fill ${statusClass}" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="heli-percentage ${statusClass}">${percentage}%</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="component-section helicopter-section">
+                <div class="component-title ${sectionClass}">
+                    <span class="material-icons">${icon}</span>
+                    ${title}
+                </div>
+                <div class="helicopter-grid">
+                    ${rows}
                 </div>
             </div>
         `;

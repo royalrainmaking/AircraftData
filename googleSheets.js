@@ -29,24 +29,24 @@ class GoogleSheetsService {
     }
 
     // Parse CSV data into structured format - manual parsing for better control
-    parseCSVData(csvData) {
+    parseCSVData(csvData, skipRows = 8) {
         const lines = csvData.split('\n');
-        if (lines.length < 8) return [];
+        if (lines.length <= skipRows) return [];
 
         const data = [];
 
-        // Skip header lines (first 8 lines) and parse data manually
-        for (let i = 8; i < lines.length; i++) {
+        // Skip header lines and parse data manually
+        for (let i = skipRows; i < lines.length; i++) {
             const line = lines[i].trim();
             if (line) {
                 const values = this.parseCSVLine(line);
-                if (values.length > 5) { // Must have at least 6 columns (allow empty first column for propeller rows)
+                if (values.length > 5) { // Must have at least 6 columns
                     data.push(values);
                 }
             }
         }
 
-        console.log(`Parsed ${data.length} data rows (skipped first 8 header rows)`);
+        console.log(`Parsed ${data.length} data rows (skipped ${skipRows} header rows)`);
         return data;
     }
 
@@ -86,11 +86,18 @@ class GoogleSheetsService {
             const sheetsToTry = [
                 { name: 'หน้าสรุปรวม', gid: '796349275' },
                 { name: 'Sheet1', gid: '0' }, // Default sheet
-                { name: 'CASA/NC212i', gid: '1437782967' },
-                { name: 'CN 235', gid: '1849588825' },
-                { name: 'SKA 350', gid: '1203659875' },
-                { name: 'CARAVAN', gid: '1959748404' }
+                { name: 'เฮลิคอปเตอร์ 2321', gid: '100943340', skipRows: 0 },
+                { name: 'เฮลิคอปเตอร์ 2321 Engine', gid: '854799453', skipRows: 0, defaultSection: 'Engine' },
+                { name: 'เฮลิคอปเตอร์ 2322', gid: '601158311', skipRows: 0 },
+                { name: 'เฮลิคอปเตอร์ 2322 Engine', gid: '72883097', skipRows: 0, defaultSection: 'Engine' },
+                { name: 'เฮลิคอปเตอร์ 2311', gid: '1620322219', skipRows: 0 },
+                { name: 'เฮลิคอปเตอร์ 2311 Engine', gid: '572187685', skipRows: 0, defaultSection: 'Engine' }
             ];
+
+            const allTransformedData = [];
+            const customAircraftData = {}; // Store custom data by aircraft ID
+            let summarySheetData = null;
+            const engineValues = {}; // Store engine TSN/TSO by aircraft ID
 
             for (const sheet of sheetsToTry) {
                 try {
@@ -99,39 +106,213 @@ class GoogleSheetsService {
                     
                     if (csvData && csvData.trim().length > 100) { // Has substantial content
                         console.log(`Found data in ${sheet.name}, length: ${csvData.length} characters`);
-                        console.log('Sample data:', csvData.substring(0, 200));
                         
-                        const parsedData = this.parseCSVData(csvData);
-                        console.log(`Parsed ${parsedData.length} data rows (skipped first 8 header rows)`);
+                        const skipRows = sheet.skipRows !== undefined ? sheet.skipRows : 8;
+                        const parsedData = this.parseCSVData(csvData, skipRows);
+                        console.log(`Parsed ${parsedData.length} data rows from ${sheet.name}`);
+
+                        if (sheet.gid === '796349275') {
+                            summarySheetData = this.parseCSVData(csvData, 0); // Parse all rows for summary sheet
+                        }
                         
                         if (parsedData.length > 0) {
-                            // Use manual transformation approach with raw parsed data
-                            const transformedData = this.transformRealSheetDataManual(parsedData, sheet.name);
-                            
-                            if (transformedData.length > 0) {
-                                console.log(`Successfully transformed ${transformedData.length} aircraft records from ${sheet.name}`);
-                                return transformedData;
+                            // Map GIDs to aircraft IDs for special helicopter sheets
+                            const customAircraftGids = {
+                                '100943340': '2321',
+                                '854799453': '2321',
+                                '601158311': '2322',
+                                '72883097': '2322',
+                                '1620322219': '2311',
+                                '572187685': '2311'
+                            };
+
+                            const aircraftId = customAircraftGids[sheet.gid];
+                            if (aircraftId) {
+                                // This is a special helicopter sheet (A/C or Engine)
+                                if (!customAircraftData[aircraftId]) {
+                                    customAircraftData[aircraftId] = [];
+                                }
+                                customAircraftData[aircraftId].push(...this.transformHelicopterSheetData(parsedData, sheet.defaultSection || 'Airframe'));
+
+                                // Capture specific values if this is the Engine sheet
+                                if (sheet.defaultSection === 'Engine' && parsedData.length >= 2) {
+                                    const row2 = parsedData[1]; // Index 1 is row 2
+                                    if (!engineValues[aircraftId]) engineValues[aircraftId] = {};
+                                    engineValues[aircraftId].tsn = row2[6]; // Index 6 is column G
+                                    engineValues[aircraftId].tso = row2[7]; // Index 7 is column H
+                                    console.log(`Captured ${aircraftId} Engine TSN: ${engineValues[aircraftId].tsn}, TSO: ${engineValues[aircraftId].tso} from G2/H2`);
+                                }
                             } else {
-                                console.log(`Manual transformation returned no data for ${sheet.name}`);
-                                // Return empty array instead of trying fallbacks
-                                return [];
+                                // Use manual transformation approach with raw parsed data
+                                const transformedData = this.transformRealSheetDataManual(parsedData, sheet.name);
+                                if (transformedData.length > 0) {
+                                    allTransformedData.push(...transformedData);
+                                }
                             }
                         }
-                    } else {
-                        console.log(`Sheet ${sheet.name} has no substantial data (${csvData ? csvData.length : 0} chars)`);
                     }
                 } catch (error) {
                     console.log(`Error fetching ${sheet.name}: ${error.message}`);
                 }
             }
 
+            // Always ensure aircraft with custom data exist
+            Object.keys(customAircraftData).forEach(aircraftId => {
+                let aircraft = allTransformedData.find(a => a.aircraftId === aircraftId);
+                
+                if (!aircraft) {
+                    console.log(`Aircraft ${aircraftId} not found in summary sheets, creating from custom data`);
+                    aircraft = {
+                        aircraftId: aircraftId,
+                        flightHours: 'ไม่ระบุ',
+                        components: {
+                            aircraft: { model: 'BELL 407GXP', serialNumber: aircraftId, type: 'Helicopter' },
+                            engine: null,
+                            propeller: null,
+                            engines: [],
+                            propellers: []
+                        }
+                    };
+                    allTransformedData.push(aircraft);
+                }
+                
+                aircraft.customComponents = customAircraftData[aircraftId];
+
+                // Sync flight hours with Airframe TSN
+                const airframeComp = customAircraftData[aircraftId].find(c => 
+                    (c.item.toUpperCase().includes('AIRFRAME') || c.item.toUpperCase().includes('A/C')) && 
+                    c.section === 'Airframe'
+                );
+                if (airframeComp && airframeComp.tsn) {
+                    aircraft.flightHours = airframeComp.tsn;
+                    console.log(`Synced ${aircraftId} flight hours with TSN: ${airframeComp.tsn}`);
+                }
+
+                // Sync from summary sheet if available
+                if (summarySheetData) {
+                    // Specific cell overrides for helicopter summaries
+                    const overrides = {
+                        '2321': { fhRow: 133, engineRow: 132, engineCol: 14 }, // A134, O133
+                        '2322': { fhRow: 134, engineRow: 133, engineCol: 14 }  // A135, O134 (Assumed pattern)
+                    };
+
+                    const config = overrides[aircraftId];
+                    if (config) {
+                        // Sync Engine TSN
+                        if (summarySheetData.length > config.engineRow) {
+                            const cellValue = summarySheetData[config.engineRow][config.engineCol];
+                            if (cellValue) {
+                                const parsedEngineTSN = this.parseHours(cellValue);
+                                if (parsedEngineTSN) {
+                                    aircraft.customComponents.forEach(comp => {
+                                        if (comp.section === 'Engine' && comp.item.toUpperCase().includes('ENGINE')) {
+                                            comp.tsn = parsedEngineTSN;
+                                        }
+                                    });
+                                    console.log(`Synced ${aircraftId} Engine TSN with summary sheet Row ${config.engineRow+1} Col ${String.fromCharCode(65+config.engineCol)}: ${cellValue} -> ${parsedEngineTSN}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (allTransformedData.length > 0) {
+                // Sync flightHours with Airframe TSN for all aircraft
+                allTransformedData.forEach(aircraft => {
+                    if (aircraft.customComponents) {
+                        // For helicopters, always use Airframe/AC TSN as flight hours
+                        const airframeComp = aircraft.customComponents.find(c => 
+                            (c.item.toUpperCase().includes('AIRFRAME') || c.item.toUpperCase().includes('A/C') || c.item.toUpperCase().includes('AIR CRAFT')) && 
+                            c.section === 'Airframe'
+                        );
+                        if (airframeComp && airframeComp.tsn) {
+                            aircraft.flightHours = airframeComp.tsn;
+                            console.log(`Final sync for ${aircraft.aircraftId}: flightHours = TSN (${airframeComp.tsn})`);
+                        }
+                    } else if (aircraft.components && aircraft.components.aircraft && aircraft.components.aircraft.tsn) {
+                        // For other helicopters that aren't using special sheets, ensure flight hours = TSN
+                        if (this.isHelicopter(aircraft.components.aircraft.model, aircraft.aircraftId)) {
+                            aircraft.flightHours = aircraft.components.aircraft.tsn;
+                            console.log(`Syncing flight hours to TSN for helicopter ${aircraft.aircraftId}: ${aircraft.flightHours}`);
+                        }
+                    }
+                });
+                return allTransformedData;
+            }
+
             console.log('No sheets could be read, using fallback sample data');
             return this.getSampleData();
-
         } catch (error) {
             console.error('Error fetching aircraft data:', error);
             return this.getSampleData();
         }
+    }
+
+    // Transform special helicopter sheet data (GID: 100943340 or 854799453)
+    transformHelicopterSheetData(data, defaultSection = 'Airframe') {
+        console.log(`Transforming special helicopter sheet data (default: ${defaultSection})...`);
+        let currentSection = defaultSection;
+        const result = [];
+
+        data.forEach(values => {
+            const itemName = values[0] || '';
+            const partNumber = values[1] || '';
+            
+            // Check for section headers
+            if (itemName.toUpperCase().includes('ENGINE COMPONENTS') || itemName.toUpperCase().includes('หมวดเครื่องยนต์')) {
+                currentSection = 'Engine';
+                return;
+            } else if (itemName.toUpperCase().includes('AIRFRAME COMPONENTS') || itemName.toUpperCase().includes('หมวดอากาศยาน')) {
+                currentSection = 'Airframe';
+                return;
+            }
+
+            // Skip rows that don't have a part number AND don't have a valid item name
+            if (!itemName && !partNumber) return;
+            if (itemName === 'Item' || itemName === 'Nomenclature' || itemName === 'รายการ' || 
+                itemName === 'Part Name' || itemName === 'ชื่อชิ้นส่วน') return;
+
+            // Map columns for special helicopter list
+            // Column A (0) is Item Name
+            // Column B (1) is Part Number
+            // Column C (2) is Serial Number
+            // Column M (12) is Percentage for progress bar
+            const percentageValue = values[12]?.toString().trim() || '0';
+            const percentage = parseInt(percentageValue.replace('%', '').trim()) || 0;
+            
+            // Create a progress bar string like "█████████░ 86%"
+            const filledBars = Math.floor(percentage / 10);
+            const emptyBars = 10 - filledBars;
+            const barString = '█'.repeat(Math.max(0, filledBars)) + '░'.repeat(Math.max(0, emptyBars));
+            const processingBar = `${barString} ${percentage}%`;
+
+            // Adjust indices based on sheet type - for Engine sheet gid=854799453
+            // TSN is G (6), TSO is H (7)
+            const tsnIndex = defaultSection === 'Engine' ? 6 : 4;
+            const tsoIndex = defaultSection === 'Engine' ? 7 : 5;
+
+            // Debug log to check the raw values from G (6) and H (7)
+            if (defaultSection === 'Engine') {
+                console.log(`Engine Row [${itemName}]: G=${values[6]}, H=${values[7]}`);
+            }
+
+            result.push({
+                item: itemName || 'ไม่ระบุ',
+                partNumber: partNumber || '',
+                serialNumber: values[2] || '',
+                limit: values[3] || '',
+                tsn: this.parseHours(values[tsnIndex]),
+                tso: this.parseHours(values[tsoIndex]),
+                remaining: values[11] || '',
+                processingBar: processingBar,
+                percentage: percentage,
+                section: currentSection,
+                type: 'Helicopter Component'
+            });
+        });
+
+        return result;
     }
 
     // Create sample data based on sheet content
@@ -455,6 +636,19 @@ class GoogleSheetsService {
         return str;
     }
 
+    // Helper function to identify if aircraft is a helicopter
+    isHelicopter(model, aircraftId) {
+        const modelUpper = (model || '').toUpperCase();
+        const idStr = (aircraftId || '').toString();
+        return modelUpper.includes('BELL') || 
+               modelUpper.includes('AS350') || 
+               modelUpper.includes('EC130') || 
+               modelUpper.includes('H130') || 
+               idStr === '2321' || 
+               idStr === '2322' ||
+               idStr === '2311';
+    }
+
     // Transform real sheet data using manual parsing approach
     transformRealSheetDataManual(data) {
         console.log('Using manual transformation approach for real sheet data...');
@@ -496,11 +690,21 @@ class GoogleSheetsService {
                     }
                 }
 
+                const aircraftComp = this.createRealComponent(values, 'Aircraft', currentAircraftId);
+                const isHelicopter = this.isHelicopter(aircraftComp.model, currentAircraftId);
+                
+                // For helicopters, always prioritize TSN (airframe/airfarm) as flight hours
+                let finalFlightHours = flightHours;
+                if (isHelicopter && aircraftComp.tsn) {
+                    finalFlightHours = aircraftComp.tsn;
+                    console.log(`Setting helicopter ${currentAircraftId} flight hours to TSN: ${finalFlightHours}`);
+                }
+
                 aircraftMap.set(currentAircraftId, {
                     aircraftId: currentAircraftId,
-                    flightHours: flightHours || this.generateDefaultFlightHours(currentAircraftId), // Generate based on aircraft ID
+                    flightHours: finalFlightHours || this.generateDefaultFlightHours(currentAircraftId), // Generate based on aircraft ID
                     components: {
-                        aircraft: this.createRealComponent(values, 'Aircraft', currentAircraftId),
+                        aircraft: aircraftComp,
                         engines: [], // Array for multiple engines (LH/RH)
                         propellers: [] // Array for multiple propellers (LH/RH)
                     }
@@ -631,8 +835,8 @@ class GoogleSheetsService {
 
             // Ensure flight hours has a reasonable value
             if (!aircraft.flightHours || aircraft.flightHours === '0:00' || aircraft.flightHours === '') {
-                aircraft.flightHours = this.generateDefaultFlightHours(aircraft.aircraftId);
-                console.log(`Generated flight hours for ${aircraft.aircraftId}: ${aircraft.flightHours}`);
+                aircraft.flightHours = 'ไม่ระบุ';
+                console.log(`No flight hours found for ${aircraft.aircraftId}, setting to "ไม่ระบุ"`);
             }
             
             // If this is a twin-engine aircraft but has no propellers, create defaults based on engines
