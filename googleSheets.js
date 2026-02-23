@@ -91,7 +91,11 @@ class GoogleSheetsService {
                 { name: 'เฮลิคอปเตอร์ 2322', gid: '601158311', skipRows: 0 },
                 { name: 'เฮลิคอปเตอร์ 2322 Engine', gid: '72883097', skipRows: 0, defaultSection: 'Engine' },
                 { name: 'เฮลิคอปเตอร์ 2311', gid: '1620322219', skipRows: 0 },
-                { name: 'เฮลิคอปเตอร์ 2311 Engine', gid: '572187685', skipRows: 0, defaultSection: 'Engine' }
+                { name: 'เฮลิคอปเตอร์ 2311 Engine', gid: '572187685', skipRows: 0, defaultSection: 'Engine' },
+                { name: 'เฮลิคอปเตอร์ 2411', gid: '1874851467', skipRows: 0 },
+                { name: 'เฮลิคอปเตอร์ 2411 Engine', gid: '420337034', skipRows: 0, defaultSection: 'Engine' },
+                { name: 'เฮลิคอปเตอร์ 18301', gid: '23426676', skipRows: 0 },
+                { name: 'เฮลิคอปเตอร์ 18301 Engine', gid: '680761810', skipRows: 0, defaultSection: 'Engine' }
             ];
 
             const allTransformedData = [];
@@ -123,7 +127,11 @@ class GoogleSheetsService {
                                 '601158311': '2322',
                                 '72883097': '2322',
                                 '1620322219': '2311',
-                                '572187685': '2311'
+                                '572187685': '2311',
+                                '1874851467': '2411',
+                                '420337034': '2411',
+                                '23426676': '18301',
+                                '680761810': '18301'
                             };
 
                             const aircraftId = customAircraftGids[sheet.gid];
@@ -193,7 +201,10 @@ class GoogleSheetsService {
                     // Specific cell overrides for helicopter summaries
                     const overrides = {
                         '2321': { fhRow: 133, engineRow: 132, engineCol: 14 }, // A134, O133
-                        '2322': { fhRow: 134, engineRow: 133, engineCol: 14 }  // A135, O134 (Assumed pattern)
+                        '2322': { fhRow: 134, engineRow: 133, engineCol: 14 },  // A135, O134
+                        '2311': { fhRow: 135, engineRow: 134, engineCol: 14 },  // A136, O135 (Assumed pattern)
+                        '2411': { fhRow: 136, engineRow: 135, engineCol: 14 },  // A137, O136 (Assumed pattern)
+                        '18301': { fhRow: 137, engineRow: 136, engineCol: 14 }  // A138, O137 (Assumed pattern)
                     };
 
                     const config = overrides[aircraftId];

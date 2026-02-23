@@ -184,7 +184,9 @@ class AircraftDataManager {
                modelUpper.includes('H130') || 
                idStr === '2321' || 
                idStr === '2322' ||
-               idStr === '2311';
+               idStr === '2311' ||
+               idStr === '2411' ||
+               idStr === '18301';
     }
 
     // Helper function to identify helicopters that should be shown as AOG
@@ -192,7 +194,7 @@ class AircraftDataManager {
         if (!this.isHelicopter(aircraft)) return false;
         const idStr = (aircraft.aircraftId || '').toString();
         // Exception for the 3 specific helicopters
-        return !(idStr === '2321' || idStr === '2322' || idStr === '2311');
+        return !(idStr === '2321' || idStr === '2322' || idStr === '2311' || idStr === '2411' || idStr === '18301');
     }
 
     getAircraftEmoji(model) {
@@ -827,7 +829,7 @@ class AircraftDataManager {
         
         // Check if it's a helicopter to hide Propellers section
         const modelUpper = (aircraft.components.aircraft?.model || '').toUpperCase();
-        const isHelicopter = modelUpper.includes('BELL') || modelUpper.includes('AS350') || modelUpper.includes('EC130') || modelUpper.includes('H130') || aircraft.aircraftId === '2321' || aircraft.aircraftId === '2322';
+        const isHelicopter = modelUpper.includes('BELL') || modelUpper.includes('AS350') || modelUpper.includes('EC130') || modelUpper.includes('H130') || aircraft.aircraftId === '2321' || aircraft.aircraftId === '2322' || aircraft.aircraftId === '2311' || aircraft.aircraftId === '2411' || aircraft.aircraftId === '18301';
 
         return `
             <div class="detailed-aircraft">
