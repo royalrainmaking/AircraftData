@@ -93,7 +93,7 @@ class FlightStatusService {
     async loadAndCacheTwoDays(selectedDate) {
         try {
             const aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
-            
+
             const fetchOptions = {
                 cache: 'no-store',
                 headers: {
@@ -103,7 +103,7 @@ class FlightStatusService {
             };
 
             const response = await fetch(aircraftURL, fetchOptions);
-            
+
             if (!response.ok) {
                 return;
             }
@@ -112,7 +112,7 @@ class FlightStatusService {
             let json;
             const startIdx = text.indexOf('{');
             const endIdx = text.lastIndexOf('}');
-            
+
             if (startIdx !== -1 && endIdx !== -1) {
                 const jsonStr = text.substring(startIdx, endIdx + 1);
                 json = JSON.parse(jsonStr);
@@ -125,7 +125,7 @@ class FlightStatusService {
             }
 
             const rows = json.table.rows;
-            
+
             // คำนวณวันก่อนหน้า
             const dateParts = selectedDate.split('-');
             const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
@@ -134,7 +134,7 @@ class FlightStatusService {
 
             // โหลด 2 วัน
             const datesToLoad = [selectedDate, previousDate];
-            
+
             for (const dateToLoad of datesToLoad) {
                 try {
                     const parsedData = this.parseFlightData(rows, dateToLoad);
@@ -155,14 +155,14 @@ class FlightStatusService {
         try {
             const today = new Date().toISOString().split('T')[0];
             const isToday = !selectedDate || selectedDate === today;
-            
+
             // ถ้าเลือกวัน → ลบ cache ทั้งหมด + โหลด 2 วัน + ใช้ cache
             if (!isToday) {
                 this.clearCache(); // ลบ cache ทั้งหมด
-                
+
                 // โหลดและ cache 2 วัน (วันที่เลือก + วันก่อนหน้า)
                 await this.loadAndCacheTwoDays(selectedDate);
-                
+
                 // ใช้ข้อมูล cache ที่เพิ่งโหลด
                 const cachedData = this.getCachedData(selectedDate);
                 if (cachedData) {
@@ -170,7 +170,7 @@ class FlightStatusService {
                     return this.flightData;
                 }
             }
-            
+
             // ถ้าเป็นวันนี้ → ดึง API ใหม่ทีละครั้ง
             let aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
 
@@ -183,13 +183,13 @@ class FlightStatusService {
             };
 
             const response = await fetch(aircraftURL, fetchOptions);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const text = await response.text();
-            
+
             if (!text || text.length < 50) {
                 throw new Error("Invalid data received");
             }
@@ -197,14 +197,14 @@ class FlightStatusService {
             let json;
             const startIdx = text.indexOf('{');
             const endIdx = text.lastIndexOf('}');
-            
+
             if (startIdx !== -1 && endIdx !== -1) {
                 const jsonStr = text.substring(startIdx, endIdx + 1);
                 json = JSON.parse(jsonStr);
             } else {
                 throw new Error('Cannot find JSON in response');
             }
-            
+
             if (!json || !json.table || !json.table.rows) {
                 throw new Error("Invalid JSON structure");
             }
@@ -224,7 +224,7 @@ class FlightStatusService {
             let aircraftURL = `https://docs.google.com/spreadsheets/d/${this.sheetID}/gviz/tq?tqx=out:json&gid=${this.aircraftSheetGID}`;
 
             const response = await fetch(aircraftURL, { cache: 'no-store' });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -233,42 +233,42 @@ class FlightStatusService {
             let json;
             const startIdx = text.indexOf('{');
             const endIdx = text.lastIndexOf('}');
-            
+
             if (startIdx !== -1 && endIdx !== -1) {
                 const jsonStr = text.substring(startIdx, endIdx + 1);
                 json = JSON.parse(jsonStr);
             } else {
                 throw new Error('Cannot find JSON in response');
             }
-            
+
             if (!json || !json.table || !json.table.rows) {
                 throw new Error("Invalid JSON structure");
             }
 
             const rows = json.table.rows;
             const allHistory = [];
-            
+
             for (const row of rows) {
                 if (!row.c || row.c.length < 2) continue;
-                
+
                 const dateValue = row.c[0]?.v || '';
                 const jsonValue = row.c[1]?.v || '';
-                
+
                 if (!jsonValue) continue;
 
                 const normalizedDate = this.normalizeDate(dateValue);
-                
+
                 try {
                     const jsonData = JSON.parse(jsonValue);
                     const dailyAircraft = [];
-                    
+
                     if (jsonData.ข้อมูลSheet1) {
                         this.processSheet1Data(jsonData.ข้อมูลSheet1, dailyAircraft);
                     }
                     if (jsonData.ข้อมูลSheet2) {
                         this.processSheet2Data(jsonData.ข้อมูลSheet2, dailyAircraft);
                     }
-                    
+
                     dailyAircraft.forEach(ac => {
                         ac.date = normalizedDate;
                         allHistory.push(ac);
@@ -277,7 +277,7 @@ class FlightStatusService {
                     console.error(`Error parsing JSON for date ${dateValue}:`, e.message);
                 }
             }
-            
+
             console.log(`✅ โหลดข้อมูลประวัติสำเร็จ: ${allHistory.length} รายการ`);
             return allHistory;
 
@@ -289,13 +289,13 @@ class FlightStatusService {
 
     parseFlightData(rows, selectedDate = null) {
         const aircraft = [];
-        
+
         let foundRow = null;
         let lastValidRow = null;
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            
+
             if (!row.c || row.c.length < 2) continue;
 
             const dateValue = row.c[0]?.v || '';
@@ -323,7 +323,7 @@ class FlightStatusService {
         }
 
         const jsonValue = foundRow.c[1]?.v || '';
-        
+
         try {
             const jsonData = JSON.parse(jsonValue);
 
@@ -411,7 +411,7 @@ class FlightStatusService {
                 const coordinates = this.getCoordinatesForProvince(baseLocation);
 
                 let helicopterName = this.getFieldValue(item, ['แบบเครื่องบิน', 'แบบเฮลิคอปเตอร์', 'เฮลิคอปเตอร์', 'BELL', 'name', 'model', 'type']);
-                
+
                 if (!helicopterName || helicopterName === 'Unknown Helicopter') {
                     helicopterName = this.findHelicopterModel(item) || 'Unknown Helicopter';
                 }
@@ -449,7 +449,7 @@ class FlightStatusService {
 
     getFieldValue(obj, fieldNames) {
         if (!obj || typeof obj !== 'object') return null;
-        
+
         for (const fieldName of fieldNames) {
             const value = obj[fieldName];
             if (value !== undefined && value !== null && value !== '') {
@@ -461,125 +461,128 @@ class FlightStatusService {
 
     getCoordinatesForProvince(province) {
         if (!province) return this.provinceCoordinates['นครสวรรค์'] || [15.7112, 100.1153];
-        
+
         const prov = String(province).trim();
-        
+
         if (this.provinceCoordinates[prov]) {
             return this.provinceCoordinates[prov];
         }
-        
+
         for (const [key, coords] of Object.entries(this.provinceCoordinates)) {
             if (key.toLowerCase() === prov.toLowerCase()) {
                 return coords;
             }
         }
-        
+
         console.warn(`⚠️ ไม่พบจังหวัด: "${province}" - ใช้พิกัด นครสวรรค์ เป็นค่าเริ่มต้น`);
         console.warn('📍 ชื่อจังหวัดที่มี:', Object.keys(this.provinceCoordinates));
-        
+
         return this.provinceCoordinates['นครสวรรค์'] || [15.7112, 100.1153];
     }
 
     findHelicopterModel(item) {
         if (!item || typeof item !== 'object') return null;
-        
+
         const helicopterPatterns = ['BELL', 'AS350', 'SIKORSKY', 'AW', 'EC', 'SA', 'UH'];
-        
+
         for (const [key, value] of Object.entries(item)) {
             if (!value) continue;
-            
+
             const valueStr = String(value).toUpperCase().trim();
-            
+
             for (const pattern of helicopterPatterns) {
                 if (valueStr.includes(pattern)) {
                     return String(value);
                 }
             }
         }
-        
+
         return null;
     }
 
     normalizeStatus(statusValue) {
         if (!statusValue) return 'active';
-        
+
         const status = String(statusValue).toLowerCase().trim();
-        
-        if (status === 'yes' || status === '1' || status === 'true' || 
+
+        if (status === 'yes' || status === '1' || status === 'true' ||
             status === 'active' || status === 'ใช้งาน' || status === 'ใช้งานได้') {
             return 'active';
-        } else if (status === 'no' || status === '0' || status === 'false' || 
-                   status === 'inactive' || status === 'ไม่ใช้งาน') {
+        } else if (status === 'no' || status === '0' || status === 'false' ||
+            status === 'inactive' || status === 'ไม่ใช้งาน') {
             return 'inactive';
         }
-        
+
         return 'active';
     }
 
     parseLocation(locationString) {
         if (!locationString) return 'Bangkok';
-        
+
         let location = String(locationString).trim();
-        
+
         location = location.replace(/ฝนหลวง/g, '').trim();
         location = location.replace(/ดัดแปรสภาพอากาศ/g, '').trim();
-        
+
+        // Handle variations of Prachuap Khiri Khan
+        location = location.replace(/ประจวบฯ/g, 'ประจวบคีรีขันธ์');
+        if (location.includes('ประจวบ') && !location.includes('ประจวบคีรีขันธ์')) {
+            location = location.replace(/ประจวบ/g, 'ประจวบคีรีขันธ์');
+        }
+
         const provinceList = Object.keys(this.provinceCoordinates);
         let firstProvinceFound = null;
         let firstProvinceIndex = location.length;
-        
+
         for (const province of provinceList) {
-            const prefixIndex = location.indexOf(`จ.${province}`);
-            if (prefixIndex !== -1 && prefixIndex < firstProvinceIndex) {
-                firstProvinceIndex = prefixIndex;
-                firstProvinceFound = province;
-            }
-            
-            const alternativePrefixIndex = location.indexOf(`จ. ${province}`);
-            if (alternativePrefixIndex !== -1 && alternativePrefixIndex < firstProvinceIndex) {
-                firstProvinceIndex = alternativePrefixIndex;
-                firstProvinceFound = province;
-            }
-            
-            const provinceIndex = location.indexOf(province);
-            if (provinceIndex !== -1 && provinceIndex < firstProvinceIndex) {
-                const beforeChar = provinceIndex > 0 ? location[provinceIndex - 1] : ' ';
-                const afterChar = provinceIndex + province.length < location.length ? location[provinceIndex + province.length] : ' ';
-                
-                if (/[\s,]/.test(beforeChar) && /[\s,]/.test(afterChar)) {
-                    firstProvinceIndex = provinceIndex;
+            const prefixes = [`จังหวัด${province}`, `จังหวัด ${province}`, `จ.${province}`, `จ. ${province}`];
+
+            for (const prefix of prefixes) {
+                const prefixIndex = location.indexOf(prefix);
+                if (prefixIndex !== -1 && prefixIndex < firstProvinceIndex) {
+                    firstProvinceIndex = prefixIndex;
                     firstProvinceFound = province;
                 }
             }
+
+            const provinceIndex = location.indexOf(province);
+            if (provinceIndex !== -1 && provinceIndex < firstProvinceIndex) {
+                // Since Thai often doesn't use spaces, we can be more lenient here.
+                // It is highly unlikely a province name appears inside another word by accident 
+                // in the context of a base or location name.
+                firstProvinceIndex = provinceIndex;
+                firstProvinceFound = province;
+            }
         }
-        
+
         if (firstProvinceFound) {
             return firstProvinceFound;
         }
-        
+
+        location = location.replace(/^จังหวัด\s*/g, '').trim();
         location = location.replace(/^จ\./g, '').trim();
         location = location.replace(/^จ\. /g, '').trim();
-        
+
         if (location.includes(' ')) {
             const parts = location.split(' ');
             const firstPart = parts[0];
-            
+
             if (firstPart.match(/^\d+/) || firstPart.match(/^[0-9]/)) {
                 const restParts = parts.slice(1).join(' ').trim();
                 if (restParts) {
                     return restParts;
                 }
             }
-            
+
             if (firstPart.includes('เม.ย') || firstPart.includes('พ.ค')) {
                 return 'Bangkok';
             }
-            
+
             if (firstPart.trim()) {
                 return firstPart.trim();
             }
         }
-        
+
         return location || 'Bangkok';
     }
 
@@ -587,7 +590,7 @@ class FlightStatusService {
         if (!dateValue) return '';
 
         const dateStr = String(dateValue);
-        
+
         if (dateStr instanceof Date) {
             const year = dateStr.getFullYear();
             const month = String(dateStr.getMonth() + 1).padStart(2, '0');
@@ -641,11 +644,11 @@ class FlightStatusService {
 
     normalizeAircraftType(type) {
         const typeLower = type.toLowerCase();
-        
+
         if (typeLower.includes('helicopter') || typeLower.includes('เฮลิคอปเตอร์')) {
             return 'helicopter';
         }
-        
+
         return 'aircraft';
     }
 
@@ -674,10 +677,10 @@ class FlightStatusService {
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 if (!row.c || !row.c[0]?.v) continue;
-                
+
                 const rowDateStr = this.normalizeDate(row.c[0].v);
                 if (!rowDateStr) continue;
-                
+
                 const rowTime = new Date(rowDateStr).getTime();
 
                 if (!bestRow) {
@@ -711,12 +714,12 @@ class FlightStatusService {
         try {
             const cacheObj = JSON.parse(localStorage.getItem(this.cacheKey) || '{}');
             const timestamp = new Date().getTime();
-            
+
             cacheObj[date || 'latest'] = {
                 data: data,
                 timestamp: timestamp
             };
-            
+
             localStorage.setItem(this.cacheKey, JSON.stringify(cacheObj));
         } catch (error) {
             console.error('Error caching data:', error.message);
@@ -727,7 +730,7 @@ class FlightStatusService {
         try {
             const cacheObj = JSON.parse(localStorage.getItem(this.cacheKey) || '{}');
             const cacheEntry = cacheObj[date || 'latest'];
-            
+
             if (!cacheEntry) {
                 return null;
             }
@@ -757,7 +760,7 @@ class FlightStatusService {
         if (filter === 'all') {
             return this.flightData;
         }
-        
+
         return this.flightData.filter(a => a.type === filter);
     }
 
@@ -798,21 +801,21 @@ class FlightStatusService {
         if (!aircraftName) return null;
 
         const name = String(aircraftName).toUpperCase().trim();
-        
-        if (name.includes('CASA-300') || name.includes('CASA-400') || 
-            (name.includes('CASA') && name.includes('NC')) || name.includes('NC 212I') || 
+
+        if (name.includes('CASA-300') || name.includes('CASA-400') ||
+            (name.includes('CASA') && name.includes('NC')) || name.includes('NC 212I') ||
             name.includes('NC212I') || name.includes('CASA NC212I')) {
             return 'img/Casa_NC212i.jpg';
         }
-        
+
         if (name.includes('SKA-350') || name.includes('SKA350')) {
             return 'img/SuperKingAir350.jpg';
         }
-        
+
         if (name.includes('CN-235') || name.includes('CN235')) {
             return 'img/CN235.jpg';
         }
-        
+
         if (name.includes('H130T2') || name.includes('H130 T2')) {
             return 'img/EC130 (H130 T2).png';
         }
@@ -840,7 +843,7 @@ class FlightStatusService {
                 return `img/${filename}`;
             }
         }
-        
+
         return null;
     }
 }
