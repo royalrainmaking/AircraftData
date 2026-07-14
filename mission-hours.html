@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>สรุปชั่วโมงภารกิจ - Aircraft Mission Hours</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    <link href="https://fonts.googleapis.com/css2?family=B612:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="mission-hours.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>สรุปชั่วโมงภารกิจ กองบริหารการบินเกษตร</h1>
+            <h2>Aircraft Mission Hours Summary</h2>
+            <nav class="top-nav">
+                <a href="index.html">หน้าหลัก</a>
+                <a href="aircraft-information.html">ข้อมูลอากาศยาน</a>
+                <a href="engine.html">ข้อมูลเครื่องยนต์</a>
+                <a href="propeller.html">ข้อมูลใบพัด</a>
+                <a href="hours-dashboard.html">ชั่วโมงบิน</a>
+                <a href="mission-hours.html" class="active">สรุปชั่วโมงภารกิจ</a>
+                <a href="maintenance-planning.html">แผนการซ่อมบำรุง</a>
+                <a href="repair-history.html">ประวัติการซ่อม</a>
+                <a href="ads.html">ข้อมูล ADs</a>
+                <a href="https://royalrainmaking.github.io/FuelManagement/">ระบบจัดการน้ำมัน</a>
+            </nav>
+        </header>
+
+        <main class="dashboard-main">
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="loading-overlay">
+                <div class="spinner"></div>
+                <p>กำลังประมวลผลข้อมูลชั่วโมงภารกิจ...</p>
+            </div>
+
+            <!-- Dashboard Header & Controls -->
+            <div class="dashboard-header">
+                <div class="header-content">
+                    <h3>สรุปชั่วโมงตามภารกิจรายปีงบประมาณ</h3>
+                </div>
+                <div class="controls-container">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="ค้นหาเบอร์ หรือแบบเครื่องบิน...">
+                    </div>
+                    <div class="fiscal-year-selector">
+                        <label for="fySelector">ปีงบประมาณ:</label>
+                        <select id="fySelector" class="custom-select">
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="type-selector">
+                        <label for="aircraftTypeSelector">ประเภท:</label>
+                        <select id="aircraftTypeSelector" class="custom-select">
+                            <option value="all">ทั้งหมด</option>
+                            <option value="aircraft">เครื่องบิน (ปีกติดลำตัว)</option>
+                            <option value="helicopter">เฮลิคอปเตอร์</option>
+                        </select>
+                    </div>
+                    <button id="printReportBtn" class="export-btn" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                        <i class="fas fa-print"></i> พิมพ์ / PDF
+                    </button>
+                    <button id="exportExcelBtn" class="export-btn">
+                        <i class="fas fa-file-excel"></i> ส่งออกข้อมูล
+                    </button>
+                    <button id="showAnomaliesBtn" class="export-btn" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                        <i class="fas fa-exclamation-triangle"></i> รายการผิดปกติ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card total-card">
+                    <div class="card-icon"><i class="fas fa-plane-departure"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">รวมทุกภารกิจ</span>
+                        <span class="card-value" id="totalHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card support-card">
+                    <div class="card-icon"><i class="fas fa-hands-helping"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">ภารกิจสนับสนุน</span>
+                        <span class="card-value" id="supportHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card rain-card">
+                    <div class="card-icon"><i class="fas fa-cloud-rain"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">ปฏิบัติการฝนหลวง</span>
+                        <span class="card-value" id="rainHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card dust-card">
+                    <div class="card-icon"><i class="fas fa-smog"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">บรรเทาปัญหาฝุ่น</span>
+                        <span class="card-value" id="dustHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card hail-card">
+                    <div class="card-icon"><i class="fas fa-snowflake"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">ยับยั้งพายุลูกเห็บ</span>
+                        <span class="card-value" id="hailHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card test-card">
+                    <div class="card-icon"><i class="fas fa-tools"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">บินทดสอบ</span>
+                        <span class="card-value" id="testHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card training-card">
+                    <div class="card-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">ฝึกบิน</span>
+                        <span class="card-value" id="trainingHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                <div class="summary-card fire-card">
+                    <div class="card-icon"><i class="fas fa-fire-extinguisher"></i></div>
+                    <div class="card-info">
+                        <span class="card-title">ดับไฟป่า</span>
+                        <span class="card-value" id="fireHours">0.00</span>
+                        <span class="card-unit">ชั่วโมง</span>
+                    </div>
+                </div>
+                </div>
+
+            <!-- Chart Section -->
+            <div class="charts-row">
+                <div class="chart-container bar-chart">
+                    <div class="chart-header">
+                        <h4><span class="material-symbols-outlined">bar_chart</span> สัดส่วนชั่วโมงภารกิจแยกตามเครื่อง</h4>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="missionChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container pie-chart">
+                    <div class="chart-header">
+                        <h4><span class="material-symbols-outlined">donut_large</span> สัดส่วนภารกิจรวม</h4>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="proportionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <table class="mission-table" id="missionTable">
+                    <thead>
+                        <tr>
+                            <th>เครื่องบิน</th>
+                            <th class="text-right">ชั่วโมงยกมา</th>
+                            <th class="text-right">ชั่วโมงล่าสุด</th>
+                            <th class="text-right">รวม (ชม.)</th>
+                            <th class="text-right">สนับสนุน</th>
+                            <th class="text-right">ฝนหลวง</th>
+                            <th class="text-right">ฝุ่น</th>
+                            <th class="text-right">ลูกเห็บ</th>
+                            <th class="text-right">ไฟป่า</th>
+                            <th class="text-right">ทดสอบ</th>
+                            <th class="text-right">ฝึกบิน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Anomalies Modal -->
+    <div id="anomaliesModal" class="modal-overlay hidden" onclick="if(event.target === this) this.classList.add('hidden');">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i> รายการชั่วโมงบินกระโดดผิดปกติ (> 24 ชม.)</h3>
+                <button id="closeAnomaliesBtn" class="close-btn" style="background: #eee; border-radius: 4px; padding: 5px 15px; font-size: 1rem; color: #333;" onclick="document.getElementById('anomaliesModal').classList.add('hidden');"><i class="fas fa-times"></i> ปิด</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #555;">รายการด้านล่างนี้คือข้อมูลการบินที่ชั่วโมงโครงสร้าง (T/A) เพิ่มขึ้นเกิน 24 ชั่วโมงต่อการบันทึก 1 ครั้ง ซึ่งมักเกิดจากการเว้นช่วงบันทึกหลายวัน หรือพิมพ์ตัวเลขผิดพลาด</p>
+                <div class="table-container">
+                    <table class="mission-table" id="anomaliesTable">
+                        <thead>
+                            <tr>
+                                <th>หมายเลขเครื่อง</th>
+                                <th>วันที่ก่อนหน้า</th>
+                                <th>วันที่บันทึกล่าสุด</th>
+                                <th class="text-right">ชั่วโมงเดิม</th>
+                                <th class="text-right">ชั่วโมงใหม่</th>
+                                <th class="text-right">ผลต่าง (ชม.)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="anomaliesTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="closeAnomaliesBtnBottom" style="background: #34495e; color: white; border: none; padding: 10px 30px; border-radius: 8px; font-family: 'B612', sans-serif; cursor: pointer; font-size: 1rem;" onclick="document.getElementById('anomaliesModal').classList.add('hidden');">ปิดหน้าต่างนี้</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="flightStatusSheets.js"></script>
+    <script src="mission-hours.js"></script>
+</body>
+</html>
