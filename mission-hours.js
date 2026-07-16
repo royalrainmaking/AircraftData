@@ -187,8 +187,14 @@ class MissionHoursManager {
         
         // Pass 1: Collect chronological flight records per aircraft
         for (const [ac, records] of Object.entries(aircraftMap)) {
-            // Sort records chronologically
-            records.sort((a, b) => new Date(a.date) - new Date(b.date));
+            // Sort records chronologically and by hours ascending for same date
+            records.sort((a, b) => {
+                const dateDiff = new Date(a.date) - new Date(b.date);
+                if (dateDiff !== 0) return dateDiff;
+                const hoursA = this.convertHoursToDecimal(a.flightHours);
+                const hoursB = this.convertHoursToDecimal(b.flightHours);
+                return hoursA - hoursB;
+            });
             
             let prevHours = null;
             let prevDateRecord = null;
@@ -219,17 +225,21 @@ class MissionHoursManager {
                         }
                         if (delta > 0 && delta < 300) { // valid flight, relaxed threshold to handle skipped log days
                             const fy = this.getFiscalYear(record.date);
-                            const initialCat = this.categorizeMission(record.mission);
+                            const prevFy = this.getFiscalYear(prevDateRecord);
                             
-                            aircraftRecords[ac].push({
-                                date: record.date,
-                                fy: fy,
-                                delta: delta,
-                                category: initialCat,
-                                originalMission: record.mission,
-                                name: record.name,
-                                type: record.type
-                            });
+                            if (fy === prevFy) {
+                                const initialCat = this.categorizeMission(record.mission);
+                                
+                                aircraftRecords[ac].push({
+                                    date: record.date,
+                                    fy: fy,
+                                    delta: delta,
+                                    category: initialCat,
+                                    originalMission: record.mission,
+                                    name: record.name,
+                                    type: record.type
+                                });
+                            }
                         }
                     }
                     prevHours = currentHours;
@@ -306,6 +316,7 @@ class MissionHoursManager {
                 }
             });
         }
+        
         
         this.availableFYs = Array.from(fySet).sort((a, b) => b - a); // Descending
         
